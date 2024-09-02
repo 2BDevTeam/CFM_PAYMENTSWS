@@ -110,13 +110,15 @@ namespace CFM_PAYMENTSWS.Helper
         private DbContextOptions<AppDbContext> GetDbContextOptions(string connectionString)
         {
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
+            /*
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json");
 
             var config = configuration.Build();
             var connString = config.GetConnectionString(connectionString);
-            optionsBuilder.UseSqlServer(connString);
+            */
+            optionsBuilder.UseSqlServer(connectionString);
 
             return optionsBuilder.Options;
         }
