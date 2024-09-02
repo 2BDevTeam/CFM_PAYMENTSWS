@@ -244,7 +244,28 @@ namespace CFM_PAYMENTSWS.Services
         {
             Debug.Print("Insere HS na actualizacao");
             string stampHs = 25.UseThisSizeForStamp();
-            U2bPaymentsHsTs u2Bhistoric = new U2bPaymentsHsTs(transactionId, "", "", "", "", 0, "", codStatus, descStatus, batchid, DateTime.Now, codStatusHs, descStatusHs, stampHs, "", DateTime.Now);
+            //U2bPaymentsHsTs u2Bhistoric = new U2bPaymentsHsTs { transactionId, "", "", "", "", 0, "", codStatus, descStatus, batchid, DateTime.Now, codStatusHs, descStatusHs, stampHs, "", DateTime.Now };
+
+            U2bPaymentsHsTs u2Bhistoric = new U2bPaymentsHsTs
+            {
+                TransactionId = transactionId,
+                CreditAccount = "",               
+                BeneficiaryName = "",              
+                TransactionDescription = "",       
+                Currency = "",                     
+                Amount = 0,                        
+                BankReference = "",                
+                StatusCode = codStatus,
+                StatusDescription = descStatus,
+                BatchId = batchid,
+                ProcessingDate = DateTime.Now,
+                StatusCodeHs = codStatusHs,
+                StatusDescriptionHs = descStatusHs,
+                U2bPaymentsHsTsstamp = stampHs,
+                DebitAccount = "",                 
+                Ousrdata = DateTime.Now
+            };
+
             _genericRepository.Add(u2Bhistoric);
 
             _genericRepository.SaveChanges();

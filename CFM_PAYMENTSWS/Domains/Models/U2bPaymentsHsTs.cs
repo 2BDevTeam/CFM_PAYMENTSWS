@@ -39,7 +39,7 @@ public partial class U2bPaymentsHsTs
 
     public string Oristamp { get; set; } = null!;
 
-
+    /*
     public U2bPaymentsHsTs(string transactionId, string creditAccount, string beneficiaryName, string transactionDescription, string currency, decimal amount, string bankReference, string statusCode, string statusDescription, string batchId, DateTime processingDate, string statusCodeHs, string statusDescriptionHs,
     string u2BPaymentsHsStamp,
     string debitAccount,
@@ -62,5 +62,6 @@ public partial class U2bPaymentsHsTs
         DebitAccount = debitAccount;
         Ousrdata = ousrData;
     }
+    */
 }
 
