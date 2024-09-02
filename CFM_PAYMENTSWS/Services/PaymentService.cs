@@ -22,12 +22,11 @@ namespace CFM_PAYMENTSWS.Services
         private readonly ProviderRoute providerRoute = new ProviderRoute();
 
 
-        //private readonly IPHCRepository _PHCRespository;
-        private readonly IPHCRepository<AppDbContext> _phcRepository;
+        private readonly IPHCRepository<E14DbContext> _phcRepository;
         private readonly IGenericRepository<AppDbContext> _genericRepository;
         private readonly IPaymentRepository<AppDbContext> _paymentRespository;
 
-        public PaymentService(IPHCRepository<AppDbContext> phcRepository, IGenericRepository<AppDbContext> genericRepository, IPaymentRepository<AppDbContext> paymentRepository)
+        public PaymentService(IPHCRepository<E14DbContext> phcRepository, IGenericRepository<AppDbContext> genericRepository, IPaymentRepository<AppDbContext> paymentRepository)
         {
             _phcRepository = phcRepository;
             _genericRepository = genericRepository;
