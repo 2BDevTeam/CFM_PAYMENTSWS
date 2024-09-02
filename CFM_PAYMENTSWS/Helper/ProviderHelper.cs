@@ -6,27 +6,7 @@ namespace CFM_PAYMENTSWS.Helper
 {
     public class ProviderHelper
     {
-        public List<UProvider> getProviderData(decimal providerCode)
-        {
-            var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-            var configuration = new ConfigurationBuilder()
-           .SetBasePath(Directory.GetCurrentDirectory())
-           .AddJsonFile($"appsettings.json");
 
-
-
-            var config = configuration.Build();
-            var connString = config.GetConnectionString("DBconnect");
-            optionsBuilder.UseSqlServer(connString);
-
-
-
-            using (AppDbContext context = new AppDbContext(optionsBuilder.Options))
-            {
-
-                return context.UProvider.Where(provider => provider.codigo == providerCode).ToList();
-            }
-        }
         public List<UProvider> getProviderByGroup(decimal providerCode,string grupo)
         {
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
@@ -37,7 +17,7 @@ namespace CFM_PAYMENTSWS.Helper
 
 
             var config = configuration.Build();
-            var connString = config.GetConnectionString("DBconnect");
+            var connString = config.GetConnectionString("ConnStr");
             optionsBuilder.UseSqlServer(connString);
 
 

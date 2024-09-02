@@ -50,7 +50,9 @@ namespace CFM_PAYMENTSWS.Services
 
                 foreach (var pagamento in pagamentos)
                 {
-                    ResponseDTO nedbankResponse = await providerRoute.loadPaymentRoute(pagamento);
+                    List<UProvider> providerData = _paymentRespository.getProviderData(pagamento.canal);
+
+                    ResponseDTO nedbankResponse = await providerRoute.loadPaymentRoute(pagamento, providerData);
                     Debug.Print("Resposta do Load");
                     Debug.Print(nedbankResponse.ToString());
 

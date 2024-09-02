@@ -89,7 +89,18 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             }
         }
 
+        public List<UProvider> getProviderData(decimal providerCode)
+        {
+            return _context.Set<UProvider>()
+                        .Where(provider => provider.codigo == providerCode).ToList();
+        }
 
+
+        public List<UProvider> getProviderByGroup(decimal providerCode, string grupo)
+        {
+            return _context.Set<UProvider>()
+                    .Where(provider => provider.codigo == providerCode && provider.grupo == grupo).ToList();
+        }
 
         public bool verificaBatchId(string batchId)
         {

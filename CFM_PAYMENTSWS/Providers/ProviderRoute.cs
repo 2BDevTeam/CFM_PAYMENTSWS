@@ -19,17 +19,15 @@ namespace CFM_PAYMENTSWS.Providers
 
        
 
-        public async Task<ResponseDTO> loadPaymentRoute(PaymentsQueue payment)
+        public async Task<ResponseDTO> loadPaymentRoute(PaymentsQueue payment, List<UProvider> providerData)
         {
             Debug.Print("Entra no LoadPayments");
             //Lista dos dados do provedor da tabela u_provider. Dados das keys e o código do provider.....
-            List<UProvider> providerData = providerHelper.getProviderData(payment.canal);
 
             //Caso não encontre nenhum provedor...
             if (!providerData.Any())
             {
                 return new ResponseDTO(new ResponseCodesDTO("000404", "Não foram encontrados os dados do provedor de pagamento"), "", payment.ToString());
-
             }
 
             Debug.Print($"Service providercode DO PROVERDOR {providerData.ToString()} ");
@@ -54,11 +52,10 @@ namespace CFM_PAYMENTSWS.Providers
 
         }
           
-        public async Task<CheckPaymentReportResponseDTO> checkPaymentsRoute(PaymentsQueue payment)
+        public async Task<CheckPaymentReportResponseDTO> checkPaymentsRoute(PaymentsQueue payment, List<UProvider> providerData)
         {
 
             
-            List<UProvider> providerData = providerHelper.getProviderData(payment.canal);
             if (!providerData.Any())
             {
                 return new CheckPaymentReportResponseDTO { batchResponse= new ResponseDTO(new ResponseCodesDTO("000404", "Não foram encontrados os dados do provedor de pagamento"), "", payment.ToString()) };

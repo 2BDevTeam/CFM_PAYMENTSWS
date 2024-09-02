@@ -12,5 +12,7 @@ namespace CFM_PAYMENTSWS.Domains.Interface
         public List<U2bPaymentsTs> GetPaymentsBatchId(string batchId);
         public List<U2bPaymentsQueueTs> GetPaymentsQueueBatchId(string batchId);
         public bool verificaBatchId(string batchId);
+        public List<UProvider> getProviderData(decimal providerCode);
+        public List<UProvider> getProviderByGroup(decimal providerCode, string grupo);
     }
 }

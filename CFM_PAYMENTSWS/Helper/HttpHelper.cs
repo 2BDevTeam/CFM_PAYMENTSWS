@@ -24,6 +24,7 @@ namespace CFM_PAYMENTSWS.Helper
         public HttpWebRequest getHttpWebRequestByProviderApiKey(decimal providerCode, string grupo, string parameters)
         {
             Debug.Print("Provier1");
+
             var providerData = providerHelper.getProviderByGroup(providerCode, grupo);
             Debug.Print("Provier: " + providerData.ToString());
 
