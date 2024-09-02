@@ -38,7 +38,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             IConfiguration configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
-            optionsBuilder.UseSqlServer(configuration.GetConnectionString("DBconnect"));
+            optionsBuilder.UseSqlServer(configuration.GetConnectionString("ConnStr"));
         }
 
         public string GetModelNameForTable(string tableName)
