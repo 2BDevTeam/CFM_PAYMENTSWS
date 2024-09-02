@@ -1,4 +1,7 @@
 ﻿using AutoMapper;
+using CFM_PAYMENTSWS.Domains.Contracts;
+using CFM_PAYMENTSWS.DTOs;
+using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using Microsoft.AspNetCore.Routing.Constraints;
 using CFM_PAYMENTSWS.Domains.Contracts;
 using CFM_PAYMENTSWS.DTOs;
@@ -34,9 +37,9 @@ namespace CFM_PAYMENTSWS.Mappers
                .ForPath(dest => dest.paymentRecordsResponse, o => o.MapFrom(src => src.PaymentRecordsStatus.Select(paymentRecord => new PaymentRecordResponseDTO
                {
 
-                  transactionId=paymentRecord.TransactionId,
-                  bankReference=paymentRecord.BankReference,
-                  paymentRecordsResponse= new ResponseDTO(getPaymentRecordStatusCode(paymentRecord),paymentRecord.ToString(),null)
+                   transactionId = paymentRecord.TransactionId,
+                   bankReference = paymentRecord.BankReference,
+                   paymentRecordsResponse = new ResponseDTO(getPaymentRecordStatusCode(paymentRecord), paymentRecord.ToString(), null)
 
                })))
                );
@@ -50,12 +53,14 @@ namespace CFM_PAYMENTSWS.Mappers
         public ResponseDTO mapBatchResponse(NedBankCheckPaymentReportResponseDTO checkPaymentReportResponseDTO)
         {
             var responseCodes = new ResponseCodesDTO();
-            if (checkPaymentReportResponseDTO.StatusCode == "1000") { 
-                responseCodes= WebTransactionCodes.SUCCESS;
+            if (checkPaymentReportResponseDTO.StatusCode == "1000")
+            {
+                responseCodes = WebTransactionCodes.SUCCESS;
                 return new ResponseDTO(responseCodes, checkPaymentReportResponseDTO.ToString(), null);
             }
 
-            if (checkPaymentReportResponseDTO.StatusCode == "1001") { 
+            if (checkPaymentReportResponseDTO.StatusCode == "1001")
+            {
                 responseCodes = WebTransactionCodes.PENDINGBATCH;
                 return new ResponseDTO(responseCodes, checkPaymentReportResponseDTO.ToString(), null);
             }
@@ -67,7 +72,8 @@ namespace CFM_PAYMENTSWS.Mappers
                     responseCodes = new ResponseCodesDTO("0007", checkPaymentReportResponseDTO.StatusDescription);
                     return new ResponseDTO(responseCodes, checkPaymentReportResponseDTO.ToString(), null);
                 }
-                if (number >= 500 && number <= 599) { 
+                if (number >= 500 && number <= 599)
+                {
                     responseCodes = new ResponseCodesDTO("0010", checkPaymentReportResponseDTO.StatusDescription);
                     return new ResponseDTO(responseCodes, checkPaymentReportResponseDTO.ToString(), null);
                 }
@@ -104,7 +110,7 @@ namespace CFM_PAYMENTSWS.Mappers
 
         public ResponseCodesDTO getStatusCode(NedbankResponseDTO nedbankResponseDTO)
         {
-            
+
             if (nedbankResponseDTO.StatusCode == "0000")
                 return WebTransactionCodes.SUCCESS;
             if (int.TryParse(nedbankResponseDTO.StatusCode, out int number))
@@ -114,13 +120,13 @@ namespace CFM_PAYMENTSWS.Mappers
                 if (number >= 500 && number <= 599)
                     return new ResponseCodesDTO("0010", nedbankResponseDTO.StatusDescription);
             }
-                
 
-            return new ResponseCodesDTO("0011",nedbankResponseDTO.StatusDescription);
-          
+
+            return new ResponseCodesDTO("0011", nedbankResponseDTO.StatusDescription);
+
         }
-     
 
-       
+
+
     }
 }

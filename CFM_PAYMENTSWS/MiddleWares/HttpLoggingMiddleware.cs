@@ -44,7 +44,7 @@ namespace CFM_PAYMENTSWS.MiddleWares
                     responseBody.Seek(0, SeekOrigin.Begin);
                     var responseText = await new StreamReader(responseBody).ReadToEndAsync();
 
-                    ResponseDTO finalResponse= new ResponseDTO(new ResponseCodesDTO("0000", "Success....", logHelper.generateResponseID()), null, content); ;
+                    ResponseDTO finalResponse= new ResponseDTO(new ResponseCodesDTO("0000", "Success...."), null, content); ;
                     ResponseDTO tmpResponse = parseToDefaultResponse.ParseToDefaultResponse(responseText);
 
                     //Debug.Print($"RESPONSE TEXT 2 {tmpResponse?.ToString()}");
@@ -60,7 +60,7 @@ namespace CFM_PAYMENTSWS.MiddleWares
                     //generateResponseLog(ResponseDTO response, string requestId, string operation,string responseText)
                    
 
-                    logHelper.generateResponseLog(finalResponse, finalResponse?.response?.id.ToString(), $"{controllerName}/{operationName}", responseText);
+                    logHelper.generateLogJB(finalResponse, finalResponse?.response?.id.ToString(), $"{controllerName}/{operationName}", responseText);
                     finalResponse.Content = null;
 
                     if(tmpResponse?.response!=null)
@@ -104,7 +104,7 @@ namespace CFM_PAYMENTSWS.MiddleWares
                 var finalResponse = new ResponseDTO(new ResponseCodesDTO("0007", "Exp", 1222), null, null);
                 
                 var errorDTO = new ErrorDTO { message = ex?.Message, stack = ex?.StackTrace?.ToString(), inner = ex?.InnerException?.ToString() };
-                logHelper.generateResponseLog(finalResponse, finalResponse?.response?.id.ToString(), $"{controllerName}/{operationName}", errorDTO.ToString());
+                logHelper.generateLogJB(finalResponse, finalResponse?.response?.id.ToString(), $"{controllerName}/{operationName}", errorDTO.ToString());
 
 
                 // Serialize the errorResponseDto to JSON

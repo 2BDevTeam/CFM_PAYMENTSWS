@@ -3,8 +3,6 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Security;
 
 namespace MPesa.security
 {
@@ -13,6 +11,7 @@ namespace MPesa.security
         
         public static string GenerateAuthorizationToken(string publicKey, string apiKey)
         {
+            /*
             Debug.Print($" PUBLIC KEY{publicKey}");
             Debug.Print($" API KEY{apiKey}");
             try
@@ -34,6 +33,9 @@ namespace MPesa.security
                 Console.WriteLine(e);
                 throw;
             }
+            */
+
+            return "";
         }
 
 

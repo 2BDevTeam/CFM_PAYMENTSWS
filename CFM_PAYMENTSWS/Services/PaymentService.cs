@@ -53,6 +53,7 @@ namespace CFM_PAYMENTSWS.Services
                 {
                     ResponseDTO nedbankResponse = await providerRoute.loadPaymentRoute(pagamento);
                     Debug.Print("Resposta do Load");
+                    Debug.Print(nedbankResponse.ToString());
 
                     switch (nedbankResponse.response.cod)
                     {
@@ -61,7 +62,7 @@ namespace CFM_PAYMENTSWS.Services
                             actualizarEstadoDoPagamento(pagamento, "Por corrigir", nedbankResponse.response.codDesc);
                             Debug.Print("Teste Por Corrigir" + nedbankResponse.response.codDesc);
                             insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
-                            logHelper.generateResponseLog(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+                            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
                             break;
 
                         case "0000":
@@ -69,7 +70,7 @@ namespace CFM_PAYMENTSWS.Services
                             Debug.Print("Teste Por processar" + nedbankResponse.response.codDesc);
                             insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
 
-                            logHelper.generateResponseLog(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+                            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
                             break;
 
                         case "0010":
@@ -78,13 +79,13 @@ namespace CFM_PAYMENTSWS.Services
 
                             insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
 
-                            logHelper.generateResponseLog(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+                            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
                             break;
                         default:
                             Debug.Print("Teste HS3" + nedbankResponse.response.codDesc);
                             insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
 
-                            logHelper.generateResponseLog(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+                            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
                             break;
 
                     }
@@ -95,12 +96,10 @@ namespace CFM_PAYMENTSWS.Services
             {
                 Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
                 var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
-                logHelper.generateResponseLogJB(response, "processarPagamento" + Guid.NewGuid(), "PaymentService.processarPagamento", ex.Message);
+                logHelper.generateLogJB(response, "processarPagamento" + Guid.NewGuid(), "PaymentService.processarPagamento", ex.Message);
                 //Debug.Print("EXEPCAO_GERAR_FICHEIRO_SYNCRONIZACAO" + ex.Message + " Inner  exx2b " + ex.InnerException);
 
             }
-
-
 
 
         }
@@ -115,7 +114,7 @@ namespace CFM_PAYMENTSWS.Services
 
             //Validar Batchid que retorna logico e caso exista retorna "OK" e caso não informamos que não existe o batchid
 
-            logHelper.generateResponseLog(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.validarPagamentos", paymentHeader.PaymentCheckedRecords.ToString());
+            logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.validarPagamentos", paymentHeader.PaymentCheckedRecords.ToString());
 
             try
             {
@@ -130,7 +129,7 @@ namespace CFM_PAYMENTSWS.Services
 
                     if (existe == false)
                     {
-                        return new ResponseDTO(new ResponseCodesDTO("0050", "Batchid not found", logHelper.generateResponseID()), null, null);
+                        return new ResponseDTO(new ResponseCodesDTO("0050", "Batchid not found"), null, null);
                     }
 
                     foreach (var pagamento in paymentHeader.PaymentCheckedRecords)
@@ -164,7 +163,7 @@ namespace CFM_PAYMENTSWS.Services
                 Debug.Print("Erro: " + ex.Message);
             }
 
-            return new ResponseDTO(new ResponseCodesDTO("0404", "Operação Inválida.", logHelper.generateResponseID()), null, null);
+            return new ResponseDTO(new ResponseCodesDTO("0404", "Operação Inválida."), null, null);
         }
 
         public void actualizarEstadoDoPagamentoByTransactionId(string transactionId, string estado, string descricao, string bankReference, string batchId)

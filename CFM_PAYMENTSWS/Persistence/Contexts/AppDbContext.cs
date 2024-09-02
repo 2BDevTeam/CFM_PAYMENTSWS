@@ -18,6 +18,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         {
         }
 
+        public virtual DbSet<ApiLogs> ApiLogs { get; set; } = null!;
         public virtual DbSet<Log> Log { get; set; } = null!;
         public virtual DbSet<U2BPayments> U2BPayments { get; set; } = null!;
         public virtual DbSet<U2BPaymentsQueue> U2BPaymentsQueue { get; set; } = null!;
@@ -74,6 +75,47 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                 modelBuilder.AddSqlConvertFunction();
             }
             modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
+
+            modelBuilder.Entity<ApiLogs>(entity =>
+            {
+                entity.HasKey(e => e.UApilogstamp)
+                    .HasName("PK__api_logs__D377A6C4446863E2");
+
+                entity.ToTable("u_api_logs");
+
+                entity.Property(e => e.UApilogstamp)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("u_apilogstamp");
+
+                entity.Property(e => e.Code)
+                    .IsUnicode(false)
+                    .HasColumnName("code");
+
+                entity.Property(e => e.Content)
+                    .IsUnicode(false)
+                    .HasColumnName("content");
+
+                entity.Property(e => e.Data)
+                    .HasColumnType("datetime")
+                    .HasColumnName("data");
+
+                entity.Property(e => e.Operation)
+                    .IsUnicode(false)
+                    .HasColumnName("operation");
+
+                entity.Property(e => e.RequestId)
+                    .IsUnicode(false)
+                    .HasColumnName("requestId");
+
+                entity.Property(e => e.ResponseDesc)
+                    .IsUnicode(false)
+                    .HasColumnName("responseDesc");
+
+                entity.Property(e => e.ResponseText)
+                    .IsUnicode(false)
+                    .HasColumnName("responsetext");
+            });
 
 
             modelBuilder.Entity<U2bPaymentsQueueTs>(entity =>
@@ -409,12 +451,12 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                 entity.HasKey(e => e.u_logstamp);
                 entity.ToTable("u_logs");
                 entity.Property(e => e.u_logstamp).HasColumnName("u_logsstamp");
-                entity.Property(e => e.requestId);
-                entity.Property(e => e.data);
-                entity.Property(e => e.code);
-                entity.Property(e => e.content);
-                entity.Property(e => e.responseDesc);
-                entity.Property(e => e.operation);
+                entity.Property(e => e.RequestId);
+                entity.Property(e => e.Data);
+                entity.Property(e => e.Code);
+                entity.Property(e => e.Content);
+                entity.Property(e => e.ResponseDesc);
+                entity.Property(e => e.Operation);
 
             });
             modelBuilder.Entity<UProvider>(entity =>
