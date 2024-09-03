@@ -106,7 +106,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
-
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
 builder.Services.Configure<IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
@@ -136,58 +135,49 @@ builder.Services.Configure<KestrelServerOptions>(options =>
 });
 //builder.Services.AddHangfireServer();
 
-try
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
 {
-     var app = builder.Build();
-
-    // Configure the HTTP request pipeline.
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
-
     app.UseSwagger();
     app.UseSwaggerUI();
-    //TFRService TFRService;
-    app.UseIpRateLimiting();
-    app.UseHangfireServer();
-
-    app.UseHangfireDashboard("/Jobs");
-
-
-
-    // Configure the root path ("/") to return the HTML file
-    app.UseDefaultFiles();
-    app.UseStaticFiles();
-    //app.UseHttpsRedirection();
-
-    app.UseRouting();
-    app.UseAuthentication();
-    app.UseAuthorization();
-    app.UseMiddleware<HttpLoggingMiddleware>();
-    app.UseEndpoints(endpoints =>
-    {
-
-        //endpoints.MapHealthChecksUI();
-
-        endpoints.MapGet("/", async context => await context.Response.WriteAsync("THE WEB SERVER IS ON!"));
-    });
-
-    //app.UseHttpsRedirection();
-
-
-
-    cronJobs.JobHandler();
-
-    app.MapControllers();
-
-    app.Run();
 }
-catch (AggregateException ex)
+
+app.UseSwagger();
+app.UseSwaggerUI();
+//TFRService TFRService;
+app.UseIpRateLimiting();
+app.UseHangfireServer();
+
+app.UseHangfireDashboard("/Jobs");
+
+
+
+// Configure the root path ("/") to return the HTML file
+app.UseDefaultFiles();
+app.UseStaticFiles();
+//app.UseHttpsRedirection();
+
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseMiddleware<HttpLoggingMiddleware>();
+app.UseEndpoints(endpoints =>
 {
-    foreach (var innerException in ex.InnerExceptions)
-    {
-        Debug.Print(innerException.Message);
-    }
-}
+
+    //endpoints.MapHealthChecksUI();
+
+    endpoints.MapGet("/", async context => await context.Response.WriteAsync("THE WEB SERVER IS ON!"));
+});
+
+//app.UseHttpsRedirection();
+
+
+
+cronJobs.JobHandler();
+
+app.MapControllers();
+
+app.Run();
+

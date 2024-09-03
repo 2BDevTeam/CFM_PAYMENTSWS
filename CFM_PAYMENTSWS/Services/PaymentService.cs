@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Globalization;
 using System.Xml.Linq;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CFM_PAYMENTSWS.Services
 {
@@ -20,7 +21,7 @@ namespace CFM_PAYMENTSWS.Services
     {
         private readonly LogHelper logHelper = new LogHelper();
         private readonly ProviderRoute providerRoute = new ProviderRoute();
-
+        private readonly TimeSpan _lockTimeout = TimeSpan.FromMinutes(5);
 
         private readonly IPHCRepository<E14DbContext> _phcRepository;
         private readonly IGenericRepository<AppDbContext> _genericRepository;
@@ -39,13 +40,15 @@ namespace CFM_PAYMENTSWS.Services
 
         }
 
-        public async Task processarPagamentos()
+
+        public async Task ProcessarPagamentos()
         {
+            string lockKey = "processarPagamentos";
+
+
 
             try
             {
-                //Busca os pagamentos na fila
-
                 var pagamentos = _paymentRespository.GetPagamentQueue("Por enviar");
 
                 foreach (var pagamento in pagamentos)
@@ -98,9 +101,13 @@ namespace CFM_PAYMENTSWS.Services
                 Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
                 var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
                 logHelper.generateLogJB(response, "processarPagamento" + Guid.NewGuid(), "PaymentService.processarPagamento", ex.Message);
-                //Debug.Print("EXEPCAO_GERAR_FICHEIRO_SYNCRONIZACAO" + ex.Message + " Inner  exx2b " + ex.InnerException);
+            }
+            finally
+            {
 
             }
+
+            
 
 
         }
