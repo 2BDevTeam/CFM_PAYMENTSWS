@@ -7,7 +7,7 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
     public interface IPHCRepository<TContext> where TContext : DbContext
     {
 
-
+        public JobLocks GetJobLocks(string jobId);
         /*
         public Ft GetFt(string ftstamp);
         public Ft2 GetFt2(string ft2stamp);

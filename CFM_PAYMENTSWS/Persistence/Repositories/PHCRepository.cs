@@ -27,19 +27,19 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         }
 
 
-        /*
-        public Ft GetFt(string ftstamp)
+        public JobLocks GetJobLocks(string jobId)
         {
-            return _context.Set<Ft>().
-                FirstOrDefault(ft => ft.Ftstamp == ftstamp);
+            return _context.Set<JobLocks>().
+                FirstOrDefault(ft => ft.JobId == jobId) 
+                ;
         }
 
+        /*
         public Ft2 GetFt2(string ft2stamp)
         {
             return _context.Set<Ft2>().
                 FirstOrDefault(ft => ft.Ft2stamp == ft2stamp);
         }
-
 
         public Para1 GetPara1(string descricao)
         {

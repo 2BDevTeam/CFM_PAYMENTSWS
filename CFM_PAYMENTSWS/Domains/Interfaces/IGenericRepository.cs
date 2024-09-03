@@ -1,6 +1,4 @@
-﻿//using LENMEDWS.Persistence.Contexts;
-
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace CFM_PAYMENTSWS.Domains.Interface
 {
@@ -11,6 +9,7 @@ namespace CFM_PAYMENTSWS.Domains.Interface
         public void Add<T>(T entity) where T : class;
 
         public void BulkDelete<T>(IEnumerable<T> entityList) where T : class;
+        public void Delete<T>(T entity) where T : class;
         public void BulkAdd<T>(IEnumerable<T> entityList) where T : class;
 
         public void BulkUpdate<T>(IEnumerable<T> entityList) where T : class;

@@ -24,13 +24,17 @@ namespace CFM_PAYMENTSWS.Services
         private readonly TimeSpan _lockTimeout = TimeSpan.FromMinutes(5);
 
         private readonly IPHCRepository<E14DbContext> _phcRepository;
-        private readonly IGenericRepository<AppDbContext> _genericRepository;
+        private readonly IGenericRepository<E14DbContext> _genericE14Repository;
         private readonly IPaymentRepository<AppDbContext> _paymentRespository;
+        private readonly IGenericRepository<AppDbContext> _genericPaymentRepository;
 
-        public PaymentService(IPHCRepository<E14DbContext> phcRepository, IGenericRepository<AppDbContext> genericRepository, IPaymentRepository<AppDbContext> paymentRepository)
+        public PaymentService(
+            IPHCRepository<E14DbContext> phcRepository, IGenericRepository<AppDbContext> genericPaymentRepository, 
+            IPaymentRepository<AppDbContext> paymentRepository, IGenericRepository<E14DbContext> genericE14Repository)
         {
             _phcRepository = phcRepository;
-            _genericRepository = genericRepository;
+            _genericPaymentRepository = genericPaymentRepository;
+            _genericE14Repository = genericE14Repository;
             _paymentRespository = paymentRepository;
         }
 
@@ -45,7 +49,24 @@ namespace CFM_PAYMENTSWS.Services
         {
             string lockKey = "processarPagamentos";
 
+            var jobLock = _phcRepository.GetJobLocks(lockKey);
 
+            if (jobLock != null && jobLock.IsRunning)
+            {
+                Debug.Print("O job já está em execução");
+                return;
+            }
+
+            if (jobLock == null)
+            {
+                jobLock = new JobLocks { JobId = lockKey, IsRunning = true };
+                _genericE14Repository.Add(jobLock);
+            }
+            else
+            {
+                jobLock.IsRunning = true;
+            }
+            _genericE14Repository.SaveChanges();
 
             try
             {
@@ -104,10 +125,13 @@ namespace CFM_PAYMENTSWS.Services
             }
             finally
             {
+                jobLock = _phcRepository.GetJobLocks(lockKey);
+
+                _genericE14Repository.Delete(jobLock);
+                _genericE14Repository.SaveChanges();
 
             }
 
-            
 
 
         }
@@ -169,7 +193,7 @@ namespace CFM_PAYMENTSWS.Services
             {
                 // Lógica de tratamento de exceção, se necessário.
                 Debug.Print("Erro: " + ex.Message);
-            return new ResponseDTO(new ResponseCodesDTO("0404", "Erro no processamento."), null, null);
+                return new ResponseDTO(new ResponseCodesDTO("0404", "Erro no processamento."), null, null);
             }
 
             return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
@@ -209,16 +233,13 @@ namespace CFM_PAYMENTSWS.Services
 
             if (paymentQueue != null)
             {
-                _genericRepository.BulkDelete(new List<U2bPaymentsQueueTs> { paymentQueue });
-
-                /*
-                paymentQueue.estado = estado;
-                paymentQueue.descricao = descricao;
-                paymentQueue.usrdata = DateTime.Now;
-                */
+                _genericPaymentRepository.Delete(paymentQueue);
             }
 
-            _genericRepository.SaveChanges();
+
+
+
+            _genericPaymentRepository.SaveChanges();
 
         }
 
@@ -247,7 +268,7 @@ namespace CFM_PAYMENTSWS.Services
             }
 
             //_wSCTX.ChangeTracker.AutoDetectChangesEnabled = false;
-            _genericRepository.SaveChanges();
+            _genericPaymentRepository.SaveChanges();
         }
 
 
@@ -261,12 +282,12 @@ namespace CFM_PAYMENTSWS.Services
             U2bPaymentsHsTs u2Bhistoric = new U2bPaymentsHsTs
             {
                 TransactionId = transactionId,
-                CreditAccount = "",               
-                BeneficiaryName = "",              
-                TransactionDescription = "",       
-                Currency = "",                     
-                Amount = 0,                        
-                BankReference = "",                
+                CreditAccount = "",
+                BeneficiaryName = "",
+                TransactionDescription = "",
+                Currency = "",
+                Amount = 0,
+                BankReference = "",
                 StatusCode = codStatus,
                 StatusDescription = descStatus,
                 BatchId = batchid,
@@ -274,13 +295,13 @@ namespace CFM_PAYMENTSWS.Services
                 StatusCodeHs = codStatusHs,
                 StatusDescriptionHs = descStatusHs,
                 U2bPaymentsHsTsstamp = stampHs,
-                DebitAccount = "",                 
+                DebitAccount = "",
                 Ousrdata = DateTime.Now
             };
 
-            _genericRepository.Add(u2Bhistoric);
+            _genericPaymentRepository.Add(u2Bhistoric);
 
-            _genericRepository.SaveChanges();
+            _genericPaymentRepository.SaveChanges();
         }
 
 

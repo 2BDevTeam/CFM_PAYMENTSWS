@@ -38,7 +38,6 @@ namespace CFM_PAYMENTSWS.Providers
                     //Chamar repositorio do Nedbank e metodo loadpayments enviando paymentsQueue
                     NedbankAPI nedbankRepository = new NedbankAPI();
                     NedbankResponseDTO nedbankResponseDTO = nedbankRepository.loadPayments(payment.payment);
-                    //Debug.Print("DadosHistorico" + nedbankResponseDTO.ToString() + "///" + payment.payment.ToString());
                     
 
                     

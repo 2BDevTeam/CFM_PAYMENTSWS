@@ -403,6 +403,10 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
            appDbContext.RemoveRange(entityList);
         }
 
+        public void Delete<T>(T entity) where T : class
+        {
+            appDbContext.Remove(entity);
+        }
 
     }
 }
