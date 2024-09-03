@@ -35,15 +35,12 @@ ConfigurationManager configuration = builder.Configuration;
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseSqlServer(configuration.GetConnectionString("ConnStr"),
-
         sqlServerOptions => sqlServerOptions.CommandTimeout(120));
 });
+
 */
 
-
-/*
-builder.Services.AddDbContext<AuthAppContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStr")));
-*/
+builder.Services.AddDbContext<AuthAppContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStrE14")));
 
 builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddEntityFrameworkStores<AuthAppContext>()
@@ -139,48 +136,58 @@ builder.Services.Configure<KestrelServerOptions>(options =>
 });
 //builder.Services.AddHangfireServer();
 
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+try
 {
+     var app = builder.Build();
+
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
     app.UseSwagger();
     app.UseSwaggerUI();
+    //TFRService TFRService;
+    app.UseIpRateLimiting();
+    app.UseHangfireServer();
+
+    app.UseHangfireDashboard("/Jobs");
+
+
+
+    // Configure the root path ("/") to return the HTML file
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+    //app.UseHttpsRedirection();
+
+    app.UseRouting();
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.UseMiddleware<HttpLoggingMiddleware>();
+    app.UseEndpoints(endpoints =>
+    {
+
+        //endpoints.MapHealthChecksUI();
+
+        endpoints.MapGet("/", async context => await context.Response.WriteAsync("THE WEB SERVER IS ON!"));
+    });
+
+    //app.UseHttpsRedirection();
+
+
+
+    cronJobs.JobHandler();
+
+    app.MapControllers();
+
+    app.Run();
 }
-
-app.UseSwagger();
-app.UseSwaggerUI();
-//TFRService TFRService;
-app.UseIpRateLimiting();
-app.UseHangfireServer();
-
-app.UseHangfireDashboard("/Jobs");
-
-
-
-// Configure the root path ("/") to return the HTML file
-app.UseDefaultFiles();
-app.UseStaticFiles();
-//app.UseHttpsRedirection();
-
-app.UseRouting();
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseMiddleware<HttpLoggingMiddleware>();
-app.UseEndpoints(endpoints =>
+catch (AggregateException ex)
 {
-
-    //endpoints.MapHealthChecksUI();
-
-    endpoints.MapGet("/", async context => await context.Response.WriteAsync("THE WEB SERVER IS ON!"));
-});
-
-//app.UseHttpsRedirection();
-
-
-
-cronJobs.JobHandler();
-
-app.MapControllers();
-
-app.Run();
+    foreach (var innerException in ex.InnerExceptions)
+    {
+        Debug.Print(innerException.Message);
+    }
+}
