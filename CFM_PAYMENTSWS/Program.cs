@@ -48,10 +48,10 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>()
 
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStr")));
-builder.Services.AddDbContext<E14DbContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStrE14")));
+builder.Services.AddDbContext<PHCDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStrE14")));
 builder.Services.AddScoped<IGenericRepository<AppDbContext>, GenericRepository<AppDbContext>>();
-builder.Services.AddScoped<IGenericRepository<E14DbContext>, GenericRepository<E14DbContext>>();
-builder.Services.AddScoped<IPHCRepository<E14DbContext>, PHCRepository<E14DbContext>>();
+builder.Services.AddScoped<IGenericRepository<PHCDbContext>, GenericRepository<PHCDbContext>>();
+builder.Services.AddScoped<IPHCRepository<PHCDbContext>, PHCRepository<PHCDbContext>>();
 builder.Services.AddScoped<IPaymentRepository<AppDbContext>, PaymentRepository<AppDbContext>>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 

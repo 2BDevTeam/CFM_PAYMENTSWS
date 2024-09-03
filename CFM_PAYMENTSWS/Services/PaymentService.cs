@@ -23,18 +23,18 @@ namespace CFM_PAYMENTSWS.Services
         private readonly ProviderRoute providerRoute = new ProviderRoute();
         private readonly TimeSpan _lockTimeout = TimeSpan.FromMinutes(5);
 
-        private readonly IPHCRepository<E14DbContext> _phcRepository;
-        private readonly IGenericRepository<E14DbContext> _genericE14Repository;
+        private readonly IPHCRepository<PHCDbContext> _phcRepository;
+        private readonly IGenericRepository<PHCDbContext> _genericPHCRepository;
         private readonly IPaymentRepository<AppDbContext> _paymentRespository;
         private readonly IGenericRepository<AppDbContext> _genericPaymentRepository;
 
         public PaymentService(
-            IPHCRepository<E14DbContext> phcRepository, IGenericRepository<AppDbContext> genericPaymentRepository, 
-            IPaymentRepository<AppDbContext> paymentRepository, IGenericRepository<E14DbContext> genericE14Repository)
+            IPHCRepository<PHCDbContext> phcRepository, IGenericRepository<AppDbContext> genericPaymentRepository,
+            IPaymentRepository<AppDbContext> paymentRepository, IGenericRepository<PHCDbContext> genericE14Repository)
         {
             _phcRepository = phcRepository;
             _genericPaymentRepository = genericPaymentRepository;
-            _genericE14Repository = genericE14Repository;
+            _genericPHCRepository = genericE14Repository;
             _paymentRespository = paymentRepository;
         }
 
@@ -60,13 +60,13 @@ namespace CFM_PAYMENTSWS.Services
             if (jobLock == null)
             {
                 jobLock = new JobLocks { JobId = lockKey, IsRunning = true };
-                _genericE14Repository.Add(jobLock);
+                _genericPHCRepository.Add(jobLock);
             }
             else
             {
                 jobLock.IsRunning = true;
             }
-            _genericE14Repository.SaveChanges();
+            _genericPHCRepository.SaveChanges();
 
             try
             {
@@ -127,11 +127,10 @@ namespace CFM_PAYMENTSWS.Services
             {
                 jobLock = _phcRepository.GetJobLocks(lockKey);
 
-                _genericE14Repository.Delete(jobLock);
-                _genericE14Repository.SaveChanges();
+                _genericPHCRepository.Delete(jobLock);
+                _genericPHCRepository.SaveChanges();
 
             }
-
 
 
         }
@@ -171,7 +170,7 @@ namespace CFM_PAYMENTSWS.Services
                         switch (pagamento.StatusCode)
                         {
                             case "1000":
-                                actualizarEstadoDoPagamentoByTransactionId(pagamento.TransactionId, "Sucesso", "Pagamento processado com sucesso", pagamento.BankReference, batchId);
+                                actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso",paymentHeader, pagamento);
                                 // Aqui, você precisa criar um objeto PaymentRecordResponseDTO e adicioná-lo à lista paymentRecordResponseDTOs, se necessário.
                                 // Exemplo:
                                 // var responseDTO = new ResponseDTO();
@@ -183,7 +182,7 @@ namespace CFM_PAYMENTSWS.Services
                                 break;
 
                             default:
-                                actualizarEstadoDoPagamentoByTransactionId(pagamento.TransactionId, "Sucesso", "Pagamento processado com sucesso", pagamento.BankReference, batchId);
+                                actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso", paymentHeader, pagamento);
                                 break;
                         }
                     }
@@ -199,20 +198,20 @@ namespace CFM_PAYMENTSWS.Services
             return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
         }
 
-        public void actualizarEstadoDoPagamentoByTransactionId(string transactionId, string estado, string descricao, string bankReference, string batchId)
+        public void actualizarEstadoDoPagamentoByTransactionId(string estado, string descricao, PaymentCheckedDTO paymentHeader, PaymentCheckedRecordsDTO pagamento)
         {
 
             EncryptionHelper encryptionHelper = new EncryptionHelper();
 
             Debug.Print("Entrou na actualizacao por ID");
-            var payment = _paymentRespository.GetPayment(transactionId, batchId);
+            var payment = _paymentRespository.GetPayment(pagamento.TransactionId, paymentHeader.BatchId);
 
             //var decryptTran = encryptionHelper.DecryptText(connString, u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp, u2BPaymentsQueue.BatchId);
-            var encryptedData = _paymentRespository.GetPaymentsQueueBatchId(batchId);
+            var encryptedData = _paymentRespository.GetPaymentsQueueBatchId(paymentHeader.BatchId);
 
 
             var paymentQueue = encryptedData
-                                     .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp) == transactionId)
+                                     .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp) == pagamento.TransactionId)
                                      .FirstOrDefault();
 
 
@@ -225,7 +224,7 @@ namespace CFM_PAYMENTSWS.Services
                 payment.estado = estado;
                 payment.descricao = descricao;
                 payment.usrdata = DateTime.Now;
-                payment.bankReference = bankReference;
+                payment.bankReference = pagamento.BankReference;
             }
 
 
@@ -237,7 +236,20 @@ namespace CFM_PAYMENTSWS.Services
             }
 
 
+            switch (payment.Tabela)
+            {
+                case "PO":
+                    var po = _phcRepository.GetPo(paymentHeader.BatchId);
 
+                    po.URefbanco = pagamento.BankReference;
+                    po.Dvalor= paymentHeader.ProcessingDate;
+
+                    _genericPHCRepository.SaveChanges();
+                    break;
+
+                default:
+                    break;
+            }
 
             _genericPaymentRepository.SaveChanges();
 

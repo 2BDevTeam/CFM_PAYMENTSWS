@@ -8,6 +8,7 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
     {
 
         public JobLocks GetJobLocks(string jobId);
+        public Po GetPo(string postamp);
         /*
         public Ft GetFt(string ftstamp);
         public Ft2 GetFt2(string ft2stamp);

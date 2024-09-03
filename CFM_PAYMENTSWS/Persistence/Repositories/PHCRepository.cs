@@ -30,8 +30,14 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         public JobLocks GetJobLocks(string jobId)
         {
             return _context.Set<JobLocks>().
-                FirstOrDefault(ft => ft.JobId == jobId) 
-                ;
+                FirstOrDefault(ft => ft.JobId == jobId) ;
+        }
+
+
+        public Po GetPo(string postamp)
+        {
+            return _context.Set<Po>().
+                FirstOrDefault(po => po.Postamp== postamp);
         }
 
         /*
