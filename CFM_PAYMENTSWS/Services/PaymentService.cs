@@ -14,13 +14,18 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Xml.Linq;
 using Microsoft.EntityFrameworkCore.Storage;
+using CFM_PAYMENTSWS.Mappers;
+using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
+using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
 
 namespace CFM_PAYMENTSWS.Services
 {
     public class PaymentService : IPaymentService
     {
         private readonly LogHelper logHelper = new LogHelper();
-        private readonly ProviderRoute providerRoute = new ProviderRoute();
+        private readonly ProviderHelper providerHelper = new ProviderHelper();
+        private readonly RouteMapper routeMapper = new RouteMapper();
+
         private readonly TimeSpan _lockTimeout = TimeSpan.FromMinutes(5);
 
         private readonly IPHCRepository<PHCDbContext> _phcRepository;
@@ -74,45 +79,14 @@ namespace CFM_PAYMENTSWS.Services
 
                 foreach (var pagamento in pagamentos)
                 {
-                    List<UProvider> providerData = _paymentRespository.getProviderData(pagamento.canal);
-
-                    ResponseDTO nedbankResponse = await providerRoute.loadPaymentRoute(pagamento, providerData);
-                    Debug.Print("Resposta do Load");
-                    Debug.Print(nedbankResponse.ToString());
-
-                    switch (nedbankResponse.response.cod)
+                    switch (pagamento.canal)
                     {
-                        case "0011":
+                        case 105:
+                            NedBankProcessing(pagamento);
 
-                            actualizarEstadoDoPagamento(pagamento, "Por corrigir", nedbankResponse.response.codDesc);
-                            Debug.Print("Teste Por Corrigir" + nedbankResponse.response.codDesc);
-                            insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
-                            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
-                            break;
-
-                        case "0000":
-                            actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
-                            Debug.Print("Teste Por processar" + nedbankResponse.response.codDesc);
-                            insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
-
-                            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
-                            break;
-
-                        case "0010":
-                        case "0007":
-                            Debug.Print("Teste HS2" + nedbankResponse.response.codDesc);
-
-                            insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
-
-                            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
                             break;
                         default:
-                            Debug.Print("Teste HS3" + nedbankResponse.response.codDesc);
-                            insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
-
-                            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
                             break;
-
                     }
                 }
 
@@ -134,6 +108,49 @@ namespace CFM_PAYMENTSWS.Services
 
 
         }
+
+
+        void NedBankProcessing(PaymentsQueue pagamento)
+        {
+
+            NedbankAPI nedbankRepository = new NedbankAPI();
+            NedbankResponseDTO nedbankResponseDTO = nedbankRepository.loadPayments(pagamento.payment);
+
+            ResponseDTO nedbankResponse = routeMapper.mapLoadPaymentResponse(105, nedbankResponseDTO);
+
+            Debug.Print("Resposta do Load");
+            Debug.Print(nedbankResponse.ToString());
+
+            insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
+
+            switch (nedbankResponse.response.cod)
+            {
+                case "0011":
+                    actualizarEstadoDoPagamento(pagamento, "Por corrigir", nedbankResponse.response.codDesc);
+                    Debug.Print("Teste Por Corrigir" + nedbankResponse.response.codDesc);
+                    break;
+
+                case "0000":
+                    actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
+                    Debug.Print("Teste Por processar" + nedbankResponse.response.codDesc);
+                    break;
+
+                case "0010":
+                    break;
+
+                case "0007":
+                    Debug.Print("Teste HS2" + nedbankResponse.response.codDesc);
+                    break;
+
+                default:
+                    Debug.Print("Teste HS3" + nedbankResponse.response.codDesc);
+                    break;
+
+            }
+            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+
+        }
+
 
         public async Task<ResponseDTO> actualizarPagamentos(PaymentCheckedDTO paymentHeader)
         {
@@ -170,7 +187,7 @@ namespace CFM_PAYMENTSWS.Services
                         switch (pagamento.StatusCode)
                         {
                             case "1000":
-                                actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso",paymentHeader, pagamento);
+                                actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso", paymentHeader, pagamento);
                                 // Aqui, você precisa criar um objeto PaymentRecordResponseDTO e adicioná-lo à lista paymentRecordResponseDTOs, se necessário.
                                 // Exemplo:
                                 // var responseDTO = new ResponseDTO();
@@ -242,7 +259,7 @@ namespace CFM_PAYMENTSWS.Services
                     var po = _phcRepository.GetPo(paymentHeader.BatchId);
 
                     po.URefbanco = pagamento.BankReference;
-                    po.Dvalor= paymentHeader.ProcessingDate;
+                    po.Dvalor = paymentHeader.ProcessingDate;
 
                     _genericPHCRepository.SaveChanges();
                     break;
