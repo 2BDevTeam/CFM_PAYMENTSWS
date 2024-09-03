@@ -43,10 +43,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 /*
 builder.Services.AddDbContext<AuthAppContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStr")));
+*/
+
 builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddEntityFrameworkStores<AuthAppContext>()
     .AddDefaultTokenProviders();
-*/
 
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStr")));
