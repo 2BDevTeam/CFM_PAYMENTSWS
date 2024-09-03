@@ -368,80 +368,97 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
 
             modelBuilder.Entity<U2bPaymentsHsTs>(entity =>
             {
-                entity
-                    .HasNoKey()
-                    .ToTable("u_2b_payments_hs_ts");
+                entity.HasKey(e => e.U2bPaymentsHsTsstamp)
+                    .HasName("PK_U_2b_Payments_Hs_ts");
+
+                entity.ToTable("u_2b_payments_hs_ts");
+
+                entity.Property(e => e.U2bPaymentsHsTsstamp)
+                    .HasMaxLength(30)
+                    .IsUnicode(false)
+                    .HasColumnName("u_2b_payments_hs_tsstamp")
+                    .HasDefaultValueSql("(left(newid(),(25)))");
 
                 entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+
                 entity.Property(e => e.BankReference)
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.BatchId)
                     .HasMaxLength(100)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.BeneficiaryName)
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.CreditAccount)
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.Currency)
                     .HasMaxLength(5)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.DebitAccount)
                     .HasMaxLength(100)
                     .IsUnicode(false)
-                    .HasDefaultValueSql("(left(newid(),(25)))")
-                    .HasColumnName("debitAccount");
+                    .HasColumnName("debitAccount")
+                    .HasDefaultValueSql("(left(newid(),(25)))");
+
                 entity.Property(e => e.Oristamp)
                     .HasMaxLength(30)
                     .IsUnicode(false)
-                    .HasDefaultValueSql("('')")
-                    .HasColumnName("oristamp");
+                    .HasColumnName("oristamp")
+                    .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.Ousrdata)
-                    .HasDefaultValueSql("(getdate())")
                     .HasColumnType("datetime")
-                    .HasColumnName("ousrdata");
+                    .HasColumnName("ousrdata")
+                    .HasDefaultValueSql("(getdate())");
+
                 entity.Property(e => e.ProcessingDate)
-                    .HasDefaultValueSql("('')")
                     .HasColumnType("datetime")
-                    .HasColumnName("processingDate");
+                    .HasColumnName("processingDate")
+                    .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.StatusCode)
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.StatusCodeHs)
                     .HasMaxLength(50)
                     .IsUnicode(false)
-                    .HasDefaultValueSql("('')")
-                    .HasColumnName("statusCodeHs");
+                    .HasColumnName("statusCodeHs")
+                    .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.StatusDescription)
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.StatusDescriptionHs)
                     .HasMaxLength(100)
                     .IsUnicode(false)
-                    .HasDefaultValueSql("('')")
-                    .HasColumnName("statusDescriptionHs");
+                    .HasColumnName("statusDescriptionHs")
+                    .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.TransactionDescription)
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.TransactionId)
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
-                entity.Property(e => e.U2bPaymentsHsTsstamp)
-                    .HasMaxLength(30)
-                    .IsUnicode(false)
-                    .HasDefaultValueSql("(left(newid(),(25)))")
-                    .HasColumnName("u_2b_payments_hs_tsstamp");
             });
 
 

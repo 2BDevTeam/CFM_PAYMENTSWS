@@ -26,7 +26,8 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
                     string json = JsonConvert.SerializeObject(payment);
-                    
+
+                    Debug.Print($"loadPayments {json} ");
 
                     streamWriter.Write(json);
                     streamWriter.Flush();

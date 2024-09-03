@@ -51,6 +51,7 @@ namespace CFM_PAYMENTSWS.Helper
             //httpWebRequest.Host = Host;
             // httpWebRequest.UseDefaultCredentials = UseDefaultCredentials;
             //httpWebRequest.Headers.Add("Authorization","Bearer "+ Authorization);
+            httpWebRequest.Headers.Add("User-Agent", userAgent);
 
 
             /*  CONTA OBA  */
@@ -82,7 +83,7 @@ namespace CFM_PAYMENTSWS.Helper
 
             var url = "https://" + Address + Path + parameters;
 
-            Debug.Print($"METHOD Authorization {grupo}{Authorization}");
+            Debug.Print($"METHOD Authorization {grupo}   {Authorization}");
             Debug.Print("URL: " + url?.ToString());
             Debug.Print("Host: " + Host?.ToString());
 
@@ -95,7 +96,7 @@ namespace CFM_PAYMENTSWS.Helper
             httpWebRequest.Headers.Add("Authorization","Bearer "+ Authorization);
 
             // httpWebRequest.Headers.Add("Origin", Origin);
-            // httpWebRequest.Headers.Add("User-Agent", userAgent);
+            httpWebRequest.Headers.Add("User-Agent", userAgent);
 
             // Imprimir o conteúdo completo do cabeçalho
             Debug.Print("Saindo do helper: "+ httpWebRequest.ToString());
