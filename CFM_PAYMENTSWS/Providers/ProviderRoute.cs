@@ -36,7 +36,7 @@ namespace CFM_PAYMENTSWS.Providers
                 case 105:
                     Debug.Print("Chamar repositorio do Nedbank e metodo loadpayments enviando paymentsQueue");
                     //Chamar repositorio do Nedbank e metodo loadpayments enviando paymentsQueue
-                    NedbankRepository nedbankRepository = new NedbankRepository();
+                    NedbankAPI nedbankRepository = new NedbankAPI();
                     NedbankResponseDTO nedbankResponseDTO = nedbankRepository.loadPayments(payment.payment);
                     //Debug.Print("DadosHistorico" + nedbankResponseDTO.ToString() + "///" + payment.payment.ToString());
                     
@@ -67,7 +67,7 @@ namespace CFM_PAYMENTSWS.Providers
                 case 105:
 
                     //Chamar repositorio do Nedbank e metodo validatePayments
-                    NedbankRepository nedbankRepository = new NedbankRepository();
+                    NedbankAPI nedbankRepository = new NedbankAPI();
                     NedBankCheckPaymentReportResponseDTO nedbankResponseDTO = nedbankRepository.validatePayments(payment.payment.BatchId);
 
                     var nedbankmappedResponse = routeMapper.mapProviderChekPaymentResponse(105, nedbankResponseDTO);

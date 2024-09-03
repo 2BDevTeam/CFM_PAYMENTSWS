@@ -11,7 +11,7 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
 {
 
  
-    public class NedbankRepository
+    public class NedbankAPI
     {
         private readonly HttpHelper httpHelper = new HttpHelper();
         public NedbankResponseDTO loadPayments(Payment payment)

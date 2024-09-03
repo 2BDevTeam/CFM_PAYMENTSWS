@@ -162,9 +162,10 @@ namespace CFM_PAYMENTSWS.Services
             {
                 // Lógica de tratamento de exceção, se necessário.
                 Debug.Print("Erro: " + ex.Message);
+            return new ResponseDTO(new ResponseCodesDTO("0404", "Erro no processamento."), null, null);
             }
 
-            return new ResponseDTO(new ResponseCodesDTO("0404", "Operação Inválida."), null, null);
+            return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
         }
 
         public void actualizarEstadoDoPagamentoByTransactionId(string transactionId, string estado, string descricao, string bankReference, string batchId)
@@ -177,6 +178,7 @@ namespace CFM_PAYMENTSWS.Services
 
             //var decryptTran = encryptionHelper.DecryptText(connString, u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp, u2BPaymentsQueue.BatchId);
             var encryptedData = _paymentRespository.GetPaymentsQueueBatchId(batchId);
+
 
             var paymentQueue = encryptedData
                                      .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp) == transactionId)
@@ -193,20 +195,21 @@ namespace CFM_PAYMENTSWS.Services
                 payment.descricao = descricao;
                 payment.usrdata = DateTime.Now;
                 payment.bankReference = bankReference;
-
-
             }
+
+
             Debug.Print("After Payment");
 
             if (paymentQueue != null)
             {
+                _genericRepository.BulkDelete(new List<U2bPaymentsQueueTs> { paymentQueue });
 
+                /*
                 paymentQueue.estado = estado;
                 paymentQueue.descricao = descricao;
                 paymentQueue.usrdata = DateTime.Now;
+                */
             }
-
-            Debug.Print("Afer Payment Queue");
 
             _genericRepository.SaveChanges();
 
