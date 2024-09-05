@@ -20,6 +20,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
 
         public virtual DbSet<JobLocks> JobLocks { get; set; } = null!;
         public virtual DbSet<Po> Po { get; set; } = null!;
+        public virtual DbSet<Liame> Liame { get; set; } = null!;
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -64,6 +65,46 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
             }
             */
             modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
+
+            modelBuilder.Entity<Liame>(entity =>
+            {
+                entity.HasKey(e => e.Liamestamp);
+
+                entity.ToTable("liame");
+
+                entity.Property(e => e.Liamestamp)
+                    .HasMaxLength(25)
+                    .IsUnicode(false)
+                    .HasColumnName("liamestamp")
+                    .HasDefaultValueSql("(left(newid(),(25)))");
+
+                entity.Property(e => e.Assunto)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("assunto");
+
+                entity.Property(e => e.Corpo)
+                    .HasColumnType("text")
+                    .HasColumnName("corpo");
+
+                entity.Property(e => e.Keystamp)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("keystamp")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Ousrdata)
+                    .HasColumnType("datetime")
+                    .HasColumnName("ousrdata")
+                    .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.Para)
+                    .HasMaxLength(200)
+                    .IsUnicode(false)
+                    .HasColumnName("para");
+
+                entity.Property(e => e.Processado).HasColumnName("processado");
+            });
 
 
             modelBuilder.Entity<Po>(entity =>
