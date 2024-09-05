@@ -12,5 +12,6 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public bool Processado { get; set; }
         public DateTime Ousrdata { get; set; }
         public string Keystamp { get; set; } = null!;
+        public string Userno { get; set; } = null!;
     }
 }

@@ -104,6 +104,12 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("para");
 
                 entity.Property(e => e.Processado).HasColumnName("processado");
+
+                entity.Property(e => e.Userno)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("userno")
+                    .HasDefaultValueSql("('')");
             });
 
 

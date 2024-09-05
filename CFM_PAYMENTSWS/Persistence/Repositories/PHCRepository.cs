@@ -50,6 +50,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                     Liamestamp = po.Liamestamp,
                     Para = po.Para,
                     Assunto = po.Assunto,
+                    Userno = encryptionHelper.DecryptText(po.Userno, po.Keystamp),
                     Corpo = encryptionHelper.DecryptText(po.Corpo, po.Keystamp),
                     Processado = po.Processado,
                     Ousrdata = po.Ousrdata

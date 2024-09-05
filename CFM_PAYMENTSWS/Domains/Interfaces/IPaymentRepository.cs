@@ -14,5 +14,8 @@ namespace CFM_PAYMENTSWS.Domains.Interface
         public bool verificaBatchId(string batchId);
         public List<UProvider> getProviderData(decimal providerCode);
         public List<UProvider> getProviderByGroup(decimal providerCode, string grupo);
+        public Suliame getUserEmail(int userno);
+
+
     }
 }

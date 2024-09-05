@@ -103,7 +103,9 @@ namespace CFM_PAYMENTSWS.Services
 
                 foreach (var liame in liames)
                 {
-                    var email= _phcRepository.SendEmail(liame.Para, liame.Assunto, liame.Corpo);
+                    var suliame = _paymentRespository.getUserEmail(int.Parse(liame.Userno));
+
+                    var email= _phcRepository.SendEmail(suliame.Email, liame.Assunto, liame.Corpo);
 
                     liame.Processado = true;
                     _genericPHCRepository.SaveChanges();

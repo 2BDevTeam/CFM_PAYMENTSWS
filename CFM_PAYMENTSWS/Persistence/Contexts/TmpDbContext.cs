@@ -17,39 +17,64 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         {
         }
 
-        public virtual DbSet<Suliame> Suliame { get; set; } = null!;
+        public virtual DbSet<Liame> Liame { get; set; } = null!;
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
-                optionsBuilder.UseSqlServer("Server=CFM-PMO-RPT\\EXP2019;Database=OnBD_WS;User Id=ws;password=12345678Ab!;MultipleActiveResultSets=true;TrustServerCertificate=True");
+                optionsBuilder.UseSqlServer("Server=SRV05\\SQLDEV2019;Database=E14E105BD_CFM;User Id=isac.munguambe;password=Murd3rB4nd; MultipleActiveResultSets=true;TrustServerCertificate=True");
             }
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Suliame>(entity =>
+            modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
+
+            modelBuilder.Entity<Liame>(entity =>
             {
-                entity.HasKey(e => e.Userno);
+                entity.HasKey(e => e.Liamestamp);
 
-                entity.ToTable("suliame");
+                entity.ToTable("liame");
 
-                entity.Property(e => e.Userno)
-                    .HasColumnType("decimal(12, 0)")
-                    .HasColumnName("userno");
+                entity.Property(e => e.Liamestamp)
+                    .HasMaxLength(25)
+                    .IsUnicode(false)
+                    .HasColumnName("liamestamp")
+                    .HasDefaultValueSql("(left(newid(),(25)))");
 
-                entity.Property(e => e.Email)
+                entity.Property(e => e.Assunto)
                     .HasMaxLength(100)
                     .IsUnicode(false)
-                    .HasColumnName("email")
+                    .HasColumnName("assunto");
+
+                entity.Property(e => e.Corpo)
+                    .HasColumnType("text")
+                    .HasColumnName("corpo");
+
+                entity.Property(e => e.Keystamp)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("keystamp")
                     .HasDefaultValueSql("('')");
 
-                entity.Property(e => e.Tlmvl)
-                    .HasMaxLength(20)
+                entity.Property(e => e.Ousrdata)
+                    .HasColumnType("datetime")
+                    .HasColumnName("ousrdata")
+                    .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.Para)
+                    .HasMaxLength(200)
                     .IsUnicode(false)
-                    .HasColumnName("tlmvl")
+                    .HasColumnName("para");
+
+                entity.Property(e => e.Processado).HasColumnName("processado");
+
+                entity.Property(e => e.Userno)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("userno")
                     .HasDefaultValueSql("('')");
             });
 

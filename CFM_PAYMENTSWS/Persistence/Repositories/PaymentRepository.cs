@@ -129,7 +129,12 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                           .ToList();
         }
 
-        
+        public Suliame getUserEmail(int userno)
+        {
+            return _context.Set<Suliame>()
+                    .Where(provider => provider.Userno== userno)
+                    .FirstOrDefault();
+        }
 
 
     }

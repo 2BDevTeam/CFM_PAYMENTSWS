@@ -34,6 +34,8 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         public virtual DbSet<U2bPaymentsHsTs> U2bPaymentsHsTs { get; set; }
         public virtual DbSet<U2bPaymentsTs> U2bPaymentsTs { get; set; }
         public virtual DbSet<U2bPaymentsQueueTs> U2bPaymentsQueueTs { get; set; }
+        public virtual DbSet<Suliame> Suliame { get; set; } = null!;
+
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -75,6 +77,30 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                 modelBuilder.AddSqlConvertFunction();
             }
             modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
+
+            modelBuilder.Entity<Suliame>(entity =>
+            {
+                entity.HasKey(e => e.Userno);
+
+                entity.ToTable("suliame");
+
+                entity.Property(e => e.Userno)
+                    .HasColumnType("decimal(12, 0)")
+                    .HasColumnName("userno");
+
+                entity.Property(e => e.Email)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("email")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Tlmvl)
+                    .HasMaxLength(20)
+                    .IsUnicode(false)
+                    .HasColumnName("tlmvl")
+                    .HasDefaultValueSql("('')");
+            });
+
 
             modelBuilder.Entity<ApiLogs>(entity =>
             {
