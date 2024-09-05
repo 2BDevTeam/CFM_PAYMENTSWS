@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using CFM_PAYMENTSWS.Mappers;
 using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
+using System.Threading.Tasks.Dataflow;
 
 namespace CFM_PAYMENTSWS.Services
 {
@@ -50,28 +51,12 @@ namespace CFM_PAYMENTSWS.Services
         }
 
 
-        public async Task ProcessarPagamentos()
+        public void ProcessarPagamentos()
         {
             string lockKey = "processarPagamentos";
 
-            var jobLock = _phcRepository.GetJobLocks(lockKey);
-
-            if (jobLock != null && jobLock.IsRunning)
-            {
-                Debug.Print("O job já está em execução");
+            if(VerificarJobActivos(lockKey)) 
                 return;
-            }
-
-            if (jobLock == null)
-            {
-                jobLock = new JobLocks { JobId = lockKey, IsRunning = true };
-                _genericPHCRepository.Add(jobLock);
-            }
-            else
-            {
-                jobLock.IsRunning = true;
-            }
-            _genericPHCRepository.SaveChanges();
 
             try
             {
@@ -99,16 +84,80 @@ namespace CFM_PAYMENTSWS.Services
             }
             finally
             {
-                jobLock = _phcRepository.GetJobLocks(lockKey);
-
-                _genericPHCRepository.Delete(jobLock);
-                _genericPHCRepository.SaveChanges();
-
+                TerminarJob(lockKey);
             }
-
 
         }
 
+        public void ProcessarEmails()
+        {
+            string lockKey = "processarEmails";
+
+            if (VerificarJobActivos(lockKey))
+                return;
+
+            try
+            {
+                var pagamentos = _paymentRespository.GetPagamentQueue("Por enviar");
+
+                foreach (var pagamento in pagamentos)
+                {
+                    switch (pagamento.canal)
+                    {
+                        case 105:
+                            NedBankProcessing(pagamento);
+
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
+                var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
+                logHelper.generateLogJB(response, "processarPagamento" + Guid.NewGuid(), "PaymentService.processarPagamento", ex.Message);
+            }
+            finally
+            {
+                TerminarJob(lockKey);
+            }
+
+        }
+
+
+        public bool VerificarJobActivos(string lockKey)
+        {
+            var jobLock = _phcRepository.GetJobLocks(lockKey);
+
+            if (jobLock != null && jobLock.IsRunning)
+            {
+                Debug.Print("O job já está em execução");
+                return true;
+            }
+
+            if (jobLock == null)
+            {
+                jobLock = new JobLocks { JobId = lockKey, IsRunning = true };
+                _genericPHCRepository.Add(jobLock);
+            }
+            else
+            {
+                jobLock.IsRunning = true;
+            }
+            _genericPHCRepository.SaveChanges();
+            return false;
+        }
+
+        public void TerminarJob(string lockKey)
+        {
+            var jobLock = _phcRepository.GetJobLocks(lockKey);
+
+            _genericPHCRepository.Delete(jobLock);
+            _genericPHCRepository.SaveChanges();
+        }
 
         void NedBankProcessing(PaymentsQueue pagamento)
         {
