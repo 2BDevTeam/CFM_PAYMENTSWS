@@ -18,6 +18,7 @@ using CFM_PAYMENTSWS.Mappers;
 using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
 using System.Threading.Tasks.Dataflow;
+using MPesa;
 
 namespace CFM_PAYMENTSWS.Services
 {
@@ -98,19 +99,17 @@ namespace CFM_PAYMENTSWS.Services
 
             try
             {
-                var pagamentos = _paymentRespository.GetPagamentQueue("Por enviar");
+                var liames = _phcRepository.GetLiameProcessado(false);
 
-                foreach (var pagamento in pagamentos)
+                foreach (var liame in liames)
                 {
-                    switch (pagamento.canal)
-                    {
-                        case 105:
-                            NedBankProcessing(pagamento);
+                    var email= _phcRepository.SendEmail(liame.Para, liame.Assunto, liame.Corpo);
 
-                            break;
-                        default:
-                            break;
-                    }
+                    liame.Processado = true;
+                    _genericPHCRepository.SaveChanges();
+
+                    var response = new ResponseDTO(new ResponseCodesDTO("0000", "Emails"), email, null);
+                    logHelper.generateLogJB(response, "processarEmails-" + Guid.NewGuid(), "PaymentService.processarEmails", email);
                 }
 
             }

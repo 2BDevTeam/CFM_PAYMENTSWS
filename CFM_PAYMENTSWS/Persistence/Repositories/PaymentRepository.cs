@@ -31,15 +31,15 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
             try
             {
+                /*
                 var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile($"appsettings.json");
 
-
-
                 var config = configuration.Build();
                 var connString = "";
                 connString=config.GetConnectionString("ConnStr");
+                */
 
                 //var pagamentos = _wSCTX.U2BPaymentsQueue
                 var pagamentos = _context.Set<U2bPaymentsQueueTs>()
