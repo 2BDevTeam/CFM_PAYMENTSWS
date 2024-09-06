@@ -109,6 +109,7 @@ namespace CFM_PAYMENTSWS.Services
 
                     Debug.Print($"email {suliame.Email}");
                     Debug.Print($"corpo {liame.Corpo}");
+                    Debug.Print($"emailReport {email}");
 
                     liame.Processado = true;
                     _genericPHCRepository.SaveChanges();
