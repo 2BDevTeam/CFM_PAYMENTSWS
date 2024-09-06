@@ -214,12 +214,6 @@ namespace CFM_PAYMENTSWS.Services
         public async Task<ResponseDTO> actualizarPagamentos(PaymentCheckedDTO paymentHeader)
         {
             List<PaymentRecordResponseDTO> paymentRecordResponseDTOs = new List<PaymentRecordResponseDTO>();
-            string batchId = "";
-
-            //Insere em HS e logs
-            bool existe = false;
-
-            //Validar Batchid que retorna logico e caso exista retorna "OK" e caso não informamos que não existe o batchid
 
             logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.validarPagamentos", paymentHeader.PaymentCheckedRecords.ToString());
 
@@ -227,12 +221,12 @@ namespace CFM_PAYMENTSWS.Services
             {
                 if (paymentHeader != null)
                 {
-                    batchId = paymentHeader.BatchId;
+                    string batchId = paymentHeader.BatchId;
                     Debug.Print("Entrou porque tem pagamentos");
 
                     //Validar se o batchid existe
 
-                    existe = _paymentRespository.verificaBatchId(batchId);
+                    bool existe = _paymentRespository.verificaBatchId(batchId);
 
                     if (existe == false)
                     {
@@ -241,6 +235,23 @@ namespace CFM_PAYMENTSWS.Services
 
                     foreach (var pagamento in paymentHeader.PaymentCheckedRecords)
                     {
+
+                        //var pagamentosRecebidos = _paymentRespository.GetPagamentQueue("Por enviar");
+
+                        var pagamentosRecebidos = new U2bPaymentsQueueTs
+                        {
+                            U2bPaymentsQueueTsstamp = 25.UseThisSizeForStamp(),
+                            BatchId = batchId,
+                            transactionId = pagamento.TransactionId,
+                            transactionDescription = pagamento.StatusDescription,
+                            Oristamp = batchId,
+                            estado = "Sucesso",
+                            descricao = "Pagamento recebido mas não processado.",
+                            Ousrdata = DateTime.Now,
+                            //Ousrhora = DateTime.Now.Hour + ":" + DateTime.Now.Minute + ":" + DateTime.Now.Second,
+                        };
+
+
                         insere2bHistorico(pagamento.TransactionId, paymentHeader.BatchId, paymentHeader.BatchId, paymentHeader.StatusCode, paymentHeader.StatusDescription, pagamento.StatusCode, pagamento.StatusDescription);
 
                         switch (pagamento.StatusCode)
@@ -288,7 +299,7 @@ namespace CFM_PAYMENTSWS.Services
 
             var paymentQueue = encryptedData
                                      .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp) == pagamento.TransactionId)
-                                     .FirstOrDefault();
+                                     .ToList();
 
             var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Destino);
 
@@ -314,7 +325,7 @@ namespace CFM_PAYMENTSWS.Services
 
             if (paymentQueue != null)
             {
-                _genericPaymentRepository.Delete(paymentQueue);
+                _genericPaymentRepository.BulkDelete(paymentQueue);
             }
 
 
