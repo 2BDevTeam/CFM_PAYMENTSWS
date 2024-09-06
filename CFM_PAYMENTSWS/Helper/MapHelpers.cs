@@ -7,6 +7,5 @@ namespace CFM_PAYMENTSWS.Helper
     public class MapHelpers
     {
 
-       
     }
 }

@@ -105,9 +105,11 @@ namespace CFM_PAYMENTSWS.Services
                 {
                     var suliame = _paymentRespository.getUserEmail(int.Parse(liame.Userno));
 
-                    var fullBody = _paymentRespository.getFullBody
+                    //O liame.Corpo só vem com o trecho de codigo do OTP, o restante do html deve ser completado pelo Fullbody
+                    var fullBody = _phcRepository.GetFullBody(liame.Corpo);
 
-                    var email= _phcRepository.SendEmail(suliame.Email, liame.Assunto, liame.Corpo);
+                    //Chamada da SP de Envio de Emails
+                    var email= _phcRepository.SendEmail(suliame.Email, liame.Assunto, fullBody);
 
                     Debug.Print($"email {suliame.Email}");
                     Debug.Print($"corpo {liame.Corpo}");

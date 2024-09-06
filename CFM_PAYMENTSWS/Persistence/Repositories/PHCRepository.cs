@@ -117,6 +117,36 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             }
         }
 
+        public string GetFullBody(string corpo)
+        {
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json")
+                .Build();
+
+            var connectionString = configuration.GetConnectionString("ConnStrE14");
+            Debug.Print($"connectionString: {connectionString}");
+
+            string emailBody = "";
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                using (var command = new SqlCommand("SELECT dbo.u_2b_fn_formatEmail(@body, @subtitle)", connection))
+                {
+                    command.Parameters.AddWithValue("@body", corpo);
+                    command.Parameters.AddWithValue("@subtitle", "O seu código OTP"); 
+
+                    emailBody = (string)command.ExecuteScalar();
+                }
+            }
+
+            return emailBody;
+        }
+
+
+
         /*
         public Ft2 GetFt2(string ft2stamp)
         {

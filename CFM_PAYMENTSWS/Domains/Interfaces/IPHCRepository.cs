@@ -11,7 +11,7 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
         public Po GetPo(string postamp);
         public List<Liame> GetLiameProcessado(bool processado);
         public string SendEmail(string email, string subject, string body);
-
+        public string GetFullBody(string corpo);
         /*
         public Ft GetFt(string ftstamp);
         public Ft2 GetFt2(string ft2stamp);
