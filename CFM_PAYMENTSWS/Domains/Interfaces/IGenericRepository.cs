@@ -7,6 +7,7 @@ namespace CFM_PAYMENTSWS.Domains.Interface
 
         public void UpsertEntity<T>(T entity,List<string> keysToExclude, List<KeyValuePair<string, object>> conditions, bool saveChanges) where T : class;
         public void Add<T>(T entity) where T : class;
+        public void Update<T>(T entity) where T : class;
 
         public void BulkDelete<T>(IEnumerable<T> entityList) where T : class;
         public void Delete<T>(T entity) where T : class;

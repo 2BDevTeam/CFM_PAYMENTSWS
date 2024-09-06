@@ -266,6 +266,11 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             }
         }
 
+        public void Update<T>(T entity) where T : class
+        {
+            appDbContext.Entry(entity).State = EntityState.Modified;
+        }
+
         public void Add<T>(T entity) where T : class
         {
             entity.AssignDefaultEntityValues();

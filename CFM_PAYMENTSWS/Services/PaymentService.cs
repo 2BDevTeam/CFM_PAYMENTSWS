@@ -105,6 +105,8 @@ namespace CFM_PAYMENTSWS.Services
                 {
                     var suliame = _paymentRespository.getUserEmail(int.Parse(liame.Userno));
 
+                    var fullBody = _paymentRespository.getFullBody
+
                     var email= _phcRepository.SendEmail(suliame.Email, liame.Assunto, liame.Corpo);
 
                     Debug.Print($"email {suliame.Email}");
@@ -112,6 +114,7 @@ namespace CFM_PAYMENTSWS.Services
                     Debug.Print($"emailReport {email}");
 
                     liame.Processado = true;
+                    _genericPHCRepository.Update(liame);
                     _genericPHCRepository.SaveChanges();
 
                     var response = new ResponseDTO(new ResponseCodesDTO("0000", "Emails"), email, null);

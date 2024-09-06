@@ -53,7 +53,8 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                     Userno = encryptionHelper.DecryptText(po.Userno, po.Keystamp),
                     Corpo = encryptionHelper.DecryptText(po.Corpo, po.Keystamp),
                     Processado = po.Processado,
-                    Ousrdata = po.Ousrdata
+                    Ousrdata = po.Ousrdata,
+                    Keystamp=po.Keystamp
                 })
                 .Where(po => po.Processado == processado)
                 .ToList();
