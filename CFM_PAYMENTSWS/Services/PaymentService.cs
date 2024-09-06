@@ -56,7 +56,7 @@ namespace CFM_PAYMENTSWS.Services
         {
             string lockKey = "processarPagamentos";
 
-            if(VerificarJobActivos(lockKey)) 
+            if (VerificarJobActivos(lockKey))
                 return;
 
             try
@@ -109,7 +109,7 @@ namespace CFM_PAYMENTSWS.Services
                     var fullBody = _phcRepository.GetFullBody(liame.Corpo);
 
                     //Chamada da SP de Envio de Emails
-                    var email= _phcRepository.SendEmail(suliame.Email, liame.Assunto, fullBody);
+                    var email = _phcRepository.SendEmail(suliame.Email, liame.Assunto, fullBody);
 
                     Debug.Print($"email {suliame.Email}");
                     Debug.Print($"corpo {liame.Corpo}");
@@ -290,21 +290,27 @@ namespace CFM_PAYMENTSWS.Services
                                      .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp) == pagamento.TransactionId)
                                      .FirstOrDefault();
 
+            var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Destino);
 
             Debug.Print("Prontos para actualziar");
             if (payment != null)
             {
-                if (estado == "Sucesso")
-                    payment.dataprocessado = DateTime.Now;
-
+                payment.dataprocessado = DateTime.Now;
                 payment.estado = estado;
                 payment.descricao = descricao;
                 payment.usrdata = DateTime.Now;
                 payment.bankReference = pagamento.BankReference;
+
             }
 
-
-            Debug.Print("After Payment");
+            if (wspayment != null)
+            {
+                wspayment.Dataprocessado = DateTime.Now;
+                wspayment.Estado = estado;
+                wspayment.Descricao = descricao;
+                wspayment.Usrdata = DateTime.Now;
+                wspayment.Bankreference = pagamento.BankReference;
+            }
 
             if (paymentQueue != null)
             {
@@ -317,6 +323,7 @@ namespace CFM_PAYMENTSWS.Services
                 case "PO":
                     var po = _phcRepository.GetPo(paymentHeader.BatchId);
 
+                    po.Process = true;
                     po.URefbanco = pagamento.BankReference;
                     po.Dvalor = paymentHeader.ProcessingDate;
 
@@ -327,7 +334,9 @@ namespace CFM_PAYMENTSWS.Services
                     break;
             }
 
+
             _genericPaymentRepository.SaveChanges();
+            _genericPHCRepository.SaveChanges();
 
         }
 
@@ -340,6 +349,7 @@ namespace CFM_PAYMENTSWS.Services
             //var paymentsToUpdate = _wSCTX.U2bPaymentsTs.Where(upayment => upayment.BatchId == u2BPayments.payment.BatchId).ToList();
             var paymentsToUpdate = _paymentRespository.GetPaymentsBatchId(u2BPayments.payment.BatchId);
             var paymentQueueToUpdate = _paymentRespository.GetPaymentsQueueBatchId(u2BPayments.payment.BatchId);
+            var wspaymentToUpdate = _phcRepository.GetWspayments(u2BPayments.payment.BatchId);
 
             foreach (var payment in paymentsToUpdate)
             {
@@ -355,8 +365,17 @@ namespace CFM_PAYMENTSWS.Services
                 paymentQueue.usrdata = DateTime.Now;
             }
 
-            //_wSCTX.ChangeTracker.AutoDetectChangesEnabled = false;
+            foreach (var wspayment in wspaymentToUpdate)
+            {
+                wspayment.Estado = estado;
+                wspayment.Descricao = descricao;
+                wspayment.Usrdata = DateTime.Now;
+            }
+
+
+
             _genericPaymentRepository.SaveChanges();
+            _genericPHCRepository.SaveChanges();
         }
 
 

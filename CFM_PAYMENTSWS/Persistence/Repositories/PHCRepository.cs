@@ -60,6 +60,22 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 .ToList();
         }
 
+        public List<UWspayments> GetWspayments(string batchid)
+        {
+            return _context.Set<UWspayments>()
+                .Where(po => po.Batchid == batchid)
+                .ToList();
+        }
+
+        public UWspayments GetWspaymentsByDestino(string batchid, string destino)
+        {
+            return _context.Set<UWspayments>()
+                .Where(po => po.Batchid == batchid
+                        &&po.Destino == destino
+                        )
+                .FirstOrDefault();
+        }
+
 
         public string SendEmail(string email, string subject, string body)
         {

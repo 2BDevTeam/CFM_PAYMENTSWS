@@ -10,6 +10,8 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
         public JobLocks GetJobLocks(string jobId);
         public Po GetPo(string postamp);
         public List<Liame> GetLiameProcessado(bool processado);
+        public List<UWspayments> GetWspayments(string batchid);
+        public UWspayments GetWspaymentsByDestino(string batchid, string destino);
         public string SendEmail(string email, string subject, string body);
         public string GetFullBody(string corpo);
         /*
