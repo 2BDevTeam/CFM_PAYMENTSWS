@@ -370,12 +370,14 @@ namespace CFM_PAYMENTSWS.Services
                 wspayment.Estado = estado;
                 wspayment.Descricao = descricao;
                 wspayment.Usrdata = DateTime.Now;
+
+                _genericPHCRepository.Update(wspayment);
+                _genericPHCRepository.SaveChanges();
             }
 
 
 
             _genericPaymentRepository.SaveChanges();
-            _genericPHCRepository.SaveChanges();
         }
 
 
