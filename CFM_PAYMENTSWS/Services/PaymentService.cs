@@ -107,6 +107,9 @@ namespace CFM_PAYMENTSWS.Services
 
                     var email= _phcRepository.SendEmail(suliame.Email, liame.Assunto, liame.Corpo);
 
+                    Debug.Print($"email {suliame.Email}");
+                    Debug.Print($"corpo {liame.Corpo}");
+
                     liame.Processado = true;
                     _genericPHCRepository.SaveChanges();
 
