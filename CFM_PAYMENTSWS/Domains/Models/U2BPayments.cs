@@ -1,38 +1,42 @@
-﻿using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
 namespace CFM_PAYMENTSWS.Domains.Models
 {
-    public class U2BPayments
+    public partial class U2bPayments
     {
-	
-			public string u_2b_paymentsstamp { get; set; }
-			public decimal valor { get; set; }
-			public string destino { get; set; }
-		    public string transactionId { get; set; }
-			public string BatchId { get; set; }	
-			public int lordem { get; set; }
-		    public string moeda { get; set; }
-		    public string origem { get; set; }
-		    public string tabela { get; set; }
-		    public string oristamp { get; set; }
-			public bool Processado { get; set; }
-            public string estado { get; set; }
-			public string descricao { get; set; }
-			public DateTime dataprocessado { get; set; }
-			public string horaprocessado { get; set; }
-			public DateTime ousrdata { get; set; }
-			public string ousrinis { get; set; }
-			public string ousrhora { get; set; }
-			public DateTime usrdata { get; set; }
-			public string usrinis { get; set; }
-			public string usrhora { get; set; }
-			public int canal { get; set; }
-			public string bankReference { get; set; }
-			public string BeneficiaryEmail { get; set; }
-
-		    public override string ToString() => JsonConvert.SerializeObject(this);
-
-
-	}
+        public string U2bPaymentsstamp { get; set; } = null!;
+        public decimal Valor { get; set; }
+        public string Tabela { get; set; } = null!;
+        public string Oristamp { get; set; } = null!;
+        public bool Processado { get; set; }
+        public DateTime Dataprocessado { get; set; }
+        public string Horaprocessado { get; set; } = null!;
+        public int? Canal { get; set; }
+        public string Moeda { get; set; } = null!;
+        public string Estado { get; set; } = null!;
+        public string Descricao { get; set; } = null!;
+        public int Lordem { get; set; }
+        public string Usrinis { get; set; } = null!;
+        public DateTime Usrdata { get; set; }
+        public string Usrhora { get; set; } = null!;
+        public DateTime? Ousrdata { get; set; }
+        public string? Ousrinis { get; set; }
+        public string? Ousrhora { get; set; }
+        public bool Marcada { get; set; }
+        public string? Transactionid { get; set; }
+        public string? Keystamp { get; set; }
+        public string? Docno { get; set; }
+        public bool? Lancadonatesouraria { get; set; }
+        public string? MpesaTransactionid { get; set; }
+        public string BatchId { get; set; } = null!;
+        public bool Checked { get; set; }
+        public DateTime ProcessingDateHs { get; set; }
+        public string StatusCodeHs { get; set; } = null!;
+        public string StatusDescriptionHs { get; set; } = null!;
+        public string Origem { get; set; } = null!;
+        public string Destino { get; set; } = null!;
+        public string? BankReference { get; set; }
+        public string Emailf { get; set; } = null!;
+    }
 }

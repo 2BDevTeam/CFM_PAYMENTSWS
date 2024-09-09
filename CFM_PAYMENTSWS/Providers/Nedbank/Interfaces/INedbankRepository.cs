@@ -5,6 +5,6 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Interfaces
 {
     public interface INedbankRepository
     {
-        NedbankResponseDTO loadPayments(U2BPaymentsQueue u2BPaymentsQueue);
+        NedbankResponseDTO loadPayments(U2bPaymentsQueue u2BPaymentsQueue);
     }
 }

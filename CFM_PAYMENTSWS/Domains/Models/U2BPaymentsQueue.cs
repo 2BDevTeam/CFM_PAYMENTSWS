@@ -1,30 +1,36 @@
-﻿using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
 namespace CFM_PAYMENTSWS.Domains.Models
 {
-    public class U2BPaymentsQueue
+    public partial class U2bPaymentsQueue
     {
-		public string u_2b_paymentsQueuestamp { get; set; }
-		public decimal valor { get; set; }
-		public string moeda { get; set; }
-        public string BatchId { get; set; }
-		public string description { get; set; }
-        public string beneficiaryName { get; set; }
-        public string transactionDescription { get; set; }
-        public int lordem { get; set; }
-		public string transactionId { get; set; }
-		public string origem { get; set; }
-		public string destino { get; set; }
-		public int canal { get; set; }
-		public string estado { get; set; }
-		public DateTime usrdata { get; set; }
-		public string descricao { get; set; }
-
-		public string keystamp;
-		public DateTime processingDate { get; set; }
-		public string BeneficiaryEmail { get; set; }
-		public override string ToString() => JsonConvert.SerializeObject(this);
-
-	}
+        public string U2bPaymentsQueuestamp { get; set; } = null!;
+        public string? Origem { get; set; }
+        public string Destino { get; set; } = null!;
+        public decimal Valor { get; set; }
+        public string? Moeda { get; set; }
+        public int Canal { get; set; }
+        public int Lordem { get; set; }
+        public string Usrinis { get; set; } = null!;
+        public DateTime Usrdata { get; set; }
+        public string Usrhora { get; set; } = null!;
+        public DateTime? Ousrdata { get; set; }
+        public string? Ousrinis { get; set; }
+        public string? Ousrhora { get; set; }
+        public bool Marcada { get; set; }
+        public string? TransactionId { get; set; }
+        public string? Keystamp { get; set; }
+        public string BatchId { get; set; } = null!;
+        public string Description { get; set; } = null!;
+        public string TransactionDescription { get; set; } = null!;
+        public string? Oristamp { get; set; }
+        public string? Docno { get; set; }
+        public string Descricao { get; set; } = null!;
+        public string Estado { get; set; } = null!;
+        public DateTime? ProcessingDate { get; set; }
+        public string? BeneficiaryName { get; set; }
+        public string Emailf { get; set; } = null!;
+        public string Tabela { get; set; } = null!;
+    }
 }
