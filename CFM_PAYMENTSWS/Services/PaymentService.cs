@@ -262,14 +262,7 @@ namespace CFM_PAYMENTSWS.Services
                         {
                             case "1000":
                                 actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso", paymentHeader, pagamento);
-                                // Aqui, você precisa criar um objeto PaymentRecordResponseDTO e adicioná-lo à lista paymentRecordResponseDTOs, se necessário.
-                                // Exemplo:
-                                // var responseDTO = new ResponseDTO();
-                                // var paymentRecordResponseDTO = new PaymentRecordResponseDTO
-                                // {
-                                //     // Defina as propriedades do paymentRecordResponseDTO com base nas informações do pagamento, batchId, e responseDTO, se aplicável.
-                                // };
-                                // paymentRecordResponseDTOs.Add(paymentRecordResponseDTO);
+                                
                                 break;
 
                             default:
@@ -329,26 +322,42 @@ namespace CFM_PAYMENTSWS.Services
 
             if (paymentQueue != null)
             {
-                _genericPaymentRepository.Delete(paymentQueue);
+                //_genericPaymentRepository.Delete(paymentQueue);
             }
 
 
             switch (payment.Tabela)
             {
                 case "PO":
-                    var po = _phcRepository.GetPo(paymentHeader.BatchId);
+                    var po = _phcRepository.GetPo(paymentQueue.Oristamp);
 
                     po.Process = true;
                     po.URefbanco = pagamento.BankReference;
                     po.Dvalor = paymentHeader.ProcessingDate;
 
-                    _genericPHCRepository.SaveChanges();
                     break;
 
+                case "PD":
+                    var pd = _phcRepository.GetPd(paymentQueue.Oristamp);
+
+                    //pd.Process = true;
+                    pd.URefbanco = pagamento.BankReference;
+                    //pd.Dvalor = paymentHeader.ProcessingDate;
+
+                    break;
+
+                case "OL":
+                    var ol = _phcRepository.GetOl(paymentQueue.Oristamp);
+
+                    //ol.Process = true;
+                    //ol.URefbanco = pagamento.BankReference;
+                    ol.Dvalor = paymentHeader.ProcessingDate;
+
+                    break;
                 default:
                     break;
-            }
 
+            }
 
             _genericPaymentRepository.SaveChanges();
             _genericPHCRepository.SaveChanges();

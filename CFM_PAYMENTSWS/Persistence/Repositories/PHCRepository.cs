@@ -42,6 +42,18 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 FirstOrDefault(po => po.Postamp == postamp);
         }
 
+        public Pd GetPd(string pdstamp)
+        {
+            return _context.Set<Pd>().
+                FirstOrDefault(po => po.Pdstamp == pdstamp);
+        }
+
+        public Ol GetOl(string olstamp)
+        {
+            return _context.Set<Ol>().
+                FirstOrDefault(po => po.Olstamp== olstamp);
+        }
+
         public List<Liame> GetLiameProcessado(bool processado)
         {
             return _context.Set<Liame>()
