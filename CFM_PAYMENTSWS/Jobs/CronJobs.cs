@@ -26,7 +26,8 @@ namespace CFM_PAYMENTSWS.Jobs
             RecurringJob.AddOrUpdate(
                "processarEmails",
                () => paymentService.ProcessarEmails(),
-              "*/30 * * * * *"
+              //"*/30 * * * * *"
+              Cron.Yearly()
               );
 
 

@@ -28,7 +28,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         {
             EncryptionHelper encryptionHelper= new EncryptionHelper();
 
-
+            Debug.Print("Get Pagamento queue");
             try
             {
                 /*
@@ -73,10 +73,11 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                     .ToList();
 
 
-                string json = JsonConvert.SerializeObject(pagamentos, Formatting.Indented);
 
                 // Imprimir o JSON
-                Debug.Print("JSON dos pagamentos no estado:\n"+estado + json);
+                Debug.Print("Estadosss");
+                string json = JsonConvert.SerializeObject(pagamentos, Formatting.Indented);
+                Debug.Print("JSON dos pagamentos no estado:\n" + estado + json);
 
                 Debug.Print("Imprimie todos pagamentos" + pagamentos.ToString());
                 return pagamentos;
