@@ -309,7 +309,6 @@ namespace CFM_PAYMENTSWS.Services
                 payment.descricao = descricao;
                 payment.usrdata = DateTime.Now;
                 payment.bankReference = pagamento.BankReference;
-
             }
 
             if (wspayment != null)
@@ -323,7 +322,7 @@ namespace CFM_PAYMENTSWS.Services
 
             if (paymentQueue != null)
             {
-                //_genericPaymentRepository.Delete(paymentQueue);
+                _genericPaymentRepository.Delete(paymentQueue);
             }
 
 
@@ -350,14 +349,19 @@ namespace CFM_PAYMENTSWS.Services
                 case "OW":
                     var ol = _phcRepository.GetOw(paymentQueue.Oristamp);
 
-                    ol.Process = true;
-                    ol.URefbanco = pagamento.BankReference;
+                    //ol.Process = true;
+                    //ol.URefbanco = pagamento.BankReference;
                     ol.Dvalor = paymentHeader.ProcessingDate;
 
                     break;
                 default:
                     break;
 
+            }
+
+            var trfb = _phcRepository.GetUTrfb(paymentQueue.BatchId);
+            if (trfb != null) {
+                trfb.Rdata = paymentHeader.ProcessingDate;
             }
 
             _genericPaymentRepository.SaveChanges();

@@ -12,6 +12,7 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
         public Pd GetPd(string pdstamp);
         public Ol GetOl(string olstamp);
         public Ow GetOw(string owstamp);
+        public UTrfb GetUTrfb(string trfbstamp);
         public List<Liame> GetLiameProcessado(bool processado);
         public List<UWspayments> GetWspayments(string batchid);
         public UWspayments GetWspaymentsByDestino(string batchid, string destino);

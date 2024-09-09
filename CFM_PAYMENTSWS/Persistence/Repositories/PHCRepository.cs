@@ -60,6 +60,12 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 FirstOrDefault(po => po.Owstamp == owstamp);
         }
 
+        public UTrfb GetUTrfb(string trfbstamp)
+        {
+            return _context.Set<UTrfb>().
+                FirstOrDefault(po => po.UTrfbstamp == trfbstamp);
+        }
+
         public List<Liame> GetLiameProcessado(bool processado)
         {
             return _context.Set<Liame>()
