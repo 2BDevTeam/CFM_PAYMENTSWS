@@ -238,6 +238,7 @@ namespace CFM_PAYMENTSWS.Services
 
                         //var pagamentosRecebidos = _paymentRespository.GetPagamentQueue("Por enviar");
 
+                        /*
                         var pagamentosRecebidos = new U2bPaymentsQueueTs
                         {
                             U2bPaymentsQueueTsstamp = 25.UseThisSizeForStamp(),
@@ -251,6 +252,9 @@ namespace CFM_PAYMENTSWS.Services
                             //Ousrhora = DateTime.Now.Hour + ":" + DateTime.Now.Minute + ":" + DateTime.Now.Second,
                         };
 
+                        _genericPaymentRepository.Add(pagamentosRecebidos);
+                        _genericPaymentRepository.SaveChanges();
+                        */
 
                         insere2bHistorico(pagamento.TransactionId, paymentHeader.BatchId, paymentHeader.BatchId, paymentHeader.StatusCode, paymentHeader.StatusDescription, pagamento.StatusCode, pagamento.StatusDescription);
 
@@ -299,7 +303,7 @@ namespace CFM_PAYMENTSWS.Services
 
             var paymentQueue = encryptedData
                                      .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp) == pagamento.TransactionId)
-                                     .ToList();
+                                     .FirstOrDefault();
 
             var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Destino);
 
@@ -325,7 +329,7 @@ namespace CFM_PAYMENTSWS.Services
 
             if (paymentQueue != null)
             {
-                _genericPaymentRepository.BulkDelete(paymentQueue);
+                _genericPaymentRepository.Delete(paymentQueue);
             }
 
 

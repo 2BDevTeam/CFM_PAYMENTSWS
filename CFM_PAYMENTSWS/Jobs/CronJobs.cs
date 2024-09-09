@@ -20,7 +20,7 @@ namespace CFM_PAYMENTSWS.Jobs
             RecurringJob.AddOrUpdate(
                "processarPagamentos",
                () => paymentService.ProcessarPagamentos(),
-              Cron.MinuteInterval(5)
+              Cron.Minutely()
               );
 
             RecurringJob.AddOrUpdate(
