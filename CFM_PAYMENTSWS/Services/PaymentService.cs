@@ -99,6 +99,7 @@ namespace CFM_PAYMENTSWS.Services
 
             try
             {
+
                 var liames = _phcRepository.GetLiameProcessado(false);
 
                 foreach (var liame in liames)
@@ -342,17 +343,18 @@ namespace CFM_PAYMENTSWS.Services
 
                     //pd.Process = true;
                     pd.URefbanco = pagamento.BankReference;
-                    //pd.Dvalor = paymentHeader.ProcessingDate;
+                    pd.Rdata = paymentHeader.ProcessingDate;
 
                     break;
 
-                case "OL":
-                    var ol = _phcRepository.GetOl(paymentQueue.Oristamp);
+                case "OW":
+                    /*
+                    var ol = _phcRepository.GetOw(paymentQueue.Oristamp);
 
                     //ol.Process = true;
                     //ol.URefbanco = pagamento.BankReference;
                     ol.Dvalor = paymentHeader.ProcessingDate;
-
+                    */
                     break;
                 default:
                     break;
