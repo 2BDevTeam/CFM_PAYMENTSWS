@@ -348,13 +348,12 @@ namespace CFM_PAYMENTSWS.Services
                     break;
 
                 case "OW":
-                    /*
                     var ol = _phcRepository.GetOw(paymentQueue.Oristamp);
 
-                    //ol.Process = true;
-                    //ol.URefbanco = pagamento.BankReference;
+                    ol.Process = true;
+                    ol.URefbanco = pagamento.BankReference;
                     ol.Dvalor = paymentHeader.ProcessingDate;
-                    */
+
                     break;
                 default:
                     break;

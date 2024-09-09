@@ -53,12 +53,12 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             return _context.Set<Ol>().
                 FirstOrDefault(po => po.Olstamp== olstamp);
         }
-        /*
+        
         public Ow GetOW(string owstamp)
         {
             return _context.Set<Ow>().
                 FirstOrDefault(po => po.Owstamp == owstamp);
-        }*/
+        }
 
         public List<Liame> GetLiameProcessado(bool processado)
         {
