@@ -54,7 +54,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 FirstOrDefault(po => po.Olstamp== olstamp);
         }
         
-        public Ow GetOW(string owstamp)
+        public Ow GetOw(string owstamp)
         {
             return _context.Set<Ow>().
                 FirstOrDefault(po => po.Owstamp == owstamp);
