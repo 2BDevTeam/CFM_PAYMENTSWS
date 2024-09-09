@@ -41,7 +41,6 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 connString=config.GetConnectionString("ConnStr");
                 */
 
-                //var pagamentos = _wSCTX.U2BPaymentsQueue
                 var pagamentos = _context.Set<U2bPaymentsQueueTs>()
                     .Where(payment => payment.estado == estado)
                     .GroupBy(payment => payment.BatchId)
@@ -63,9 +62,8 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                                 TransactionDescription = paymentRecord.transactionDescription,
                                 BeneficiaryName = encryptionHelper.DecryptText(paymentRecord.beneficiaryName, paymentRecord.keystamp),
                                 TransactionId = encryptionHelper.DecryptText(paymentRecord.transactionId, paymentRecord.keystamp),
-                                //CreditAccount = paymentRecord.destino,
                                 CreditAccount = encryptionHelper.DecryptText(paymentRecord.destino, paymentRecord.keystamp),
-                                BeneficiaryEmail = encryptionHelper.DecryptText(paymentRecord.BeneficiaryEmail, paymentRecord.keystamp)
+                                BeneficiaryEmail = encryptionHelper.DecryptText(paymentRecord.BeneficiaryEmail, paymentRecord.keystamp) ?? ""
 
                             }).ToList()
                         }
