@@ -506,9 +506,10 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
 
             modelBuilder.Entity<U2bPaymentsHs>(entity =>
             {
-                entity.HasNoKey();
 
                 entity.ToTable("u_2b_payments_hs");
+
+                entity.HasKey(e => e.U2bPaymentsHsstamp);
 
                 entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
 

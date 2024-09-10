@@ -243,7 +243,6 @@ namespace CFM_PAYMENTSWS.Services
                         {
                             case "1000":
                                 actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso", paymentHeader, pagamento);
-                                
                                 break;
 
                             default:
