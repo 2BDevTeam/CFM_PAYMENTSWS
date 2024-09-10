@@ -41,29 +41,29 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 connString=config.GetConnectionString("ConnStr");
                 */
 
-                var pagamentos = _context.Set<U2bPaymentsQueueTs>()
-                    .Where(payment => payment.estado == estado)
+                var pagamentos = _context.Set<U2bPaymentsQueue>()
+                    .Where(payment => payment.Estado == estado)
                     .GroupBy(payment => payment.BatchId)
                     .Select(group => new PaymentsQueue
                     {
-                        canal = group.First().canal,
+                        canal = group.First().Canal,
                         payment = new Payment
                         {
 
                             BatchId = group.Key,
-                            Description = group.First().description,
-                            ProcessingDate = (group.First().processingDate < DateTime.Now) ? DateTime.Now : group.First().processingDate,
-                            DebitAccount = group.First().origem,
+                            Description = group.First().Description,
+                            ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
+                            DebitAccount = group.First().Origem,
 
                             PaymentRecords = group.Select(paymentRecord => new PaymentRecords
                             {
-                                Amount = paymentRecord.valor,
-                                Currency = paymentRecord.moeda,
-                                TransactionDescription = paymentRecord.transactionDescription,
-                                BeneficiaryName = encryptionHelper.DecryptText(paymentRecord.beneficiaryName, paymentRecord.keystamp),
-                                TransactionId = encryptionHelper.DecryptText(paymentRecord.transactionId, paymentRecord.keystamp),
-                                CreditAccount = encryptionHelper.DecryptText(paymentRecord.destino, paymentRecord.keystamp),
-                                BeneficiaryEmail = encryptionHelper.DecryptText(paymentRecord.BeneficiaryEmail, paymentRecord.keystamp) ?? ""
+                                Amount = paymentRecord.Valor,
+                                Currency = paymentRecord.Moeda,
+                                TransactionDescription = paymentRecord.TransactionDescription,
+                                BeneficiaryName = encryptionHelper.DecryptText(paymentRecord.BeneficiaryName, paymentRecord.Keystamp),
+                                TransactionId = encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp),
+                                CreditAccount = encryptionHelper.DecryptText(paymentRecord.Destino, paymentRecord.Keystamp),
+                                BeneficiaryEmail = encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp) ?? ""
 
                             }).ToList()
                         }
@@ -104,26 +104,26 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         public bool verificaBatchId(string batchId)
         {
             // Retorna true se o batchId existe na tabela, caso contrário, retorna false
-            return _context.Set<U2bPaymentsQueueTs>()
+            return _context.Set<U2bPaymentsQueue>()
                         .Any(p => p.BatchId == batchId);
         }
 
-        public U2bPaymentsTs GetPayment(string transactionId, string batchId)
+        public U2bPayments GetPayment(string transactionId, string batchId)
         {
-            return _context.Set<U2bPaymentsTs>()
-                        .Where(upayment => upayment.transactionId == transactionId && upayment.BatchId == batchId)
+            return _context.Set<U2bPayments>()
+                        .Where(upayment => upayment.Transactionid == transactionId && upayment.BatchId == batchId)
                         .FirstOrDefault();
         }
 
-        public List<U2bPaymentsTs> GetPaymentsBatchId(string batchId)
+        public List<U2bPayments> GetPaymentsBatchId(string batchId)
         {
-            return _context.Set<U2bPaymentsTs>()
+            return _context.Set<U2bPayments>()
                         .Where(upayment => upayment.BatchId == batchId).ToList();
         }
 
-        public List<U2bPaymentsQueueTs> GetPaymentsQueueBatchId( string batchId)
+        public List<U2bPaymentsQueue> GetPaymentsQueueBatchId( string batchId)
         {
-            return _context.Set<U2bPaymentsQueueTs>()
+            return _context.Set<U2bPaymentsQueue>()
                           .Where(u2BPaymentsQueue => u2BPaymentsQueue.BatchId == batchId)
                           .ToList();
         }

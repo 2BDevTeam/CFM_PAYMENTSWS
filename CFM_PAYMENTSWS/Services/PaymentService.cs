@@ -237,26 +237,6 @@ namespace CFM_PAYMENTSWS.Services
                     foreach (var pagamento in paymentHeader.PaymentCheckedRecords)
                     {
 
-                        //var pagamentosRecebidos = _paymentRespository.GetPagamentQueue("Por enviar");
-
-                        /*
-                        var pagamentosRecebidos = new U2bPaymentsQueueTs
-                        {
-                            U2bPaymentsQueueTsstamp = 25.UseThisSizeForStamp(),
-                            BatchId = batchId,
-                            transactionId = pagamento.TransactionId,
-                            transactionDescription = pagamento.StatusDescription,
-                            Oristamp = batchId,
-                            estado = "Sucesso",
-                            descricao = "Pagamento recebido mas não processado.",
-                            Ousrdata = DateTime.Now,
-                            //Ousrhora = DateTime.Now.Hour + ":" + DateTime.Now.Minute + ":" + DateTime.Now.Second,
-                        };
-
-                        _genericPaymentRepository.Add(pagamentosRecebidos);
-                        _genericPaymentRepository.SaveChanges();
-                        */
-
                         insere2bHistorico(pagamento.TransactionId, paymentHeader.BatchId, paymentHeader.BatchId, paymentHeader.StatusCode, paymentHeader.StatusDescription, pagamento.StatusCode, pagamento.StatusDescription);
 
                         switch (pagamento.StatusCode)
@@ -296,7 +276,7 @@ namespace CFM_PAYMENTSWS.Services
 
 
             var paymentQueue = encryptedData
-                                     .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp) == pagamento.TransactionId)
+                                     .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.TransactionId, u2BPaymentsQueue.Keystamp) == pagamento.TransactionId)
                                      .FirstOrDefault();
 
             var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Destino);
@@ -304,11 +284,11 @@ namespace CFM_PAYMENTSWS.Services
             Debug.Print("Prontos para actualziar");
             if (payment != null)
             {
-                payment.dataprocessado = DateTime.Now;
-                payment.estado = estado;
-                payment.descricao = descricao;
-                payment.usrdata = DateTime.Now;
-                payment.bankReference = pagamento.BankReference;
+                payment.Dataprocessado = DateTime.Now;
+                payment.Estado = estado;
+                payment.Descricao= descricao;
+                payment.Usrdata = DateTime.Now;
+                payment.BankReference= pagamento.BankReference;
             }
 
             if (wspayment != null)
@@ -375,23 +355,23 @@ namespace CFM_PAYMENTSWS.Services
         {
             Debug.Print("Entrou na atualizacao");
 
-            //var paymentsToUpdate = _wSCTX.U2bPaymentsTs.Where(upayment => upayment.BatchId == u2BPayments.payment.BatchId).ToList();
+            //var paymentsToUpdate = _wSCTX.U2bPayments.Where(upayment => upayment.BatchId == u2BPayments.payment.BatchId).ToList();
             var paymentsToUpdate = _paymentRespository.GetPaymentsBatchId(u2BPayments.payment.BatchId);
             var paymentQueueToUpdate = _paymentRespository.GetPaymentsQueueBatchId(u2BPayments.payment.BatchId);
             var wspaymentToUpdate = _phcRepository.GetWspayments(u2BPayments.payment.BatchId);
 
             foreach (var payment in paymentsToUpdate)
             {
-                payment.estado = estado;
-                payment.descricao = descricao;
-                payment.usrdata = DateTime.Now;
+                payment.Estado = estado;
+                payment.Descricao = descricao;
+                payment.Usrdata = DateTime.Now;
             }
 
             foreach (var paymentQueue in paymentQueueToUpdate)
             {
-                paymentQueue.estado = estado;
-                paymentQueue.descricao = descricao;
-                paymentQueue.usrdata = DateTime.Now;
+                paymentQueue.Estado = estado;
+                paymentQueue.Descricao = descricao;
+                paymentQueue.Usrdata = DateTime.Now;
             }
 
             foreach (var wspayment in wspaymentToUpdate)
@@ -415,9 +395,9 @@ namespace CFM_PAYMENTSWS.Services
         {
             Debug.Print("Insere HS na actualizacao");
             string stampHs = 25.UseThisSizeForStamp();
-            //U2bPaymentsHsTs u2Bhistoric = new U2bPaymentsHsTs { transactionId, "", "", "", "", 0, "", codStatus, descStatus, batchid, DateTime.Now, codStatusHs, descStatusHs, stampHs, "", DateTime.Now };
+            //U2bPaymentsHs u2Bhistoric = new U2bPaymentsHs { transactionId, "", "", "", "", 0, "", codStatus, descStatus, batchid, DateTime.Now, codStatusHs, descStatusHs, stampHs, "", DateTime.Now };
 
-            U2bPaymentsHsTs u2Bhistoric = new U2bPaymentsHsTs
+            U2bPaymentsHs u2Bhistoric = new U2bPaymentsHs
             {
                 TransactionId = transactionId,
                 CreditAccount = "",
@@ -432,7 +412,7 @@ namespace CFM_PAYMENTSWS.Services
                 ProcessingDate = DateTime.Now,
                 StatusCodeHs = codStatusHs,
                 StatusDescriptionHs = descStatusHs,
-                U2bPaymentsHsTsstamp = stampHs,
+                U2bPaymentsHsstamp = stampHs,
                 DebitAccount = "",
                 Ousrdata = DateTime.Now
             };
