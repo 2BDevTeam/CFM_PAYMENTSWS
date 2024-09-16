@@ -506,10 +506,15 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
 
             modelBuilder.Entity<U2bPaymentsHs>(entity =>
             {
+                entity.HasKey(e => e.U2bPaymentsHsstamp);
 
                 entity.ToTable("u_2b_payments_hs");
 
-                entity.HasKey(e => e.U2bPaymentsHsstamp);
+                entity.Property(e => e.U2bPaymentsHsstamp)
+                    .HasMaxLength(30)
+                    .IsUnicode(false)
+                    .HasColumnName("u_2b_payments_hsstamp")
+                    .HasDefaultValueSql("(left(newid(),(25)))");
 
                 entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
 
@@ -591,12 +596,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
-
-                entity.Property(e => e.U2bPaymentsHsstamp)
-                    .HasMaxLength(30)
-                    .IsUnicode(false)
-                    .HasColumnName("u_2b_payments_hsstamp")
-                    .HasDefaultValueSql("(left(newid(),(25)))");
             });
 
 

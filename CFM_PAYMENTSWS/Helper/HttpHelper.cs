@@ -65,6 +65,7 @@ namespace CFM_PAYMENTSWS.Helper
             Debug.Print("Saindo do helper: " + httpWebRequest.ToString());
             return httpWebRequest;
         }
+
         public HttpWebRequest getHttpWebRequestByProvider(decimal providerCode, string grupo,string parameters)
         {
             Debug.Print("Provier1" );

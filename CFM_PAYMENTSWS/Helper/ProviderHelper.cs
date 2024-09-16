@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using CFM_PAYMENTSWS.Domains.Models;
 using CFM_PAYMENTSWS.Persistence.Contexts;
+using System.Diagnostics;
 
 namespace CFM_PAYMENTSWS.Helper
 {
@@ -17,9 +18,12 @@ namespace CFM_PAYMENTSWS.Helper
 
 
             var config = configuration.Build();
-            var connString = config.GetConnectionString("ConnStr");
+            var connString = config.GetConnectionString("ConnStrE14");
             optionsBuilder.UseSqlServer(connString);
 
+
+
+            Debug.Print("connString: " + connString);
 
 
             using (AppDbContext context = new AppDbContext(optionsBuilder.Options))

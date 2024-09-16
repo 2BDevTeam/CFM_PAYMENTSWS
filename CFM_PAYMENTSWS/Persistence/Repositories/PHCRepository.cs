@@ -95,7 +95,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         {
             return _context.Set<UWspayments>()
                 .Where(po => po.Batchid == batchid
-                        &&po.Destino == destino
+                        && po.Oristamp == destino
                         )
                 .FirstOrDefault();
         }

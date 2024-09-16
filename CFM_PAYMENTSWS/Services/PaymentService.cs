@@ -216,7 +216,11 @@ namespace CFM_PAYMENTSWS.Services
         {
             List<PaymentRecordResponseDTO> paymentRecordResponseDTOs = new List<PaymentRecordResponseDTO>();
 
-            logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.validarPagamentos", paymentHeader.PaymentCheckedRecords.ToString());
+            string json1 = JsonConvert.SerializeObject(paymentHeader);
+
+            Debug.Print("paymentRecordResponseDTOs" + json1);
+
+            logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.validarPagamentos", json1);
 
             try
             {
@@ -278,7 +282,7 @@ namespace CFM_PAYMENTSWS.Services
                                      .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.TransactionId, u2BPaymentsQueue.Keystamp) == pagamento.TransactionId)
                                      .FirstOrDefault();
 
-            var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Destino);
+            var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Oristamp);
 
             Debug.Print("Prontos para actualziar");
             if (payment != null)

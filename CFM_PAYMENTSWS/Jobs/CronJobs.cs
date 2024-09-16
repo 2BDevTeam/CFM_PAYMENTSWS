@@ -23,13 +23,13 @@ namespace CFM_PAYMENTSWS.Jobs
               Cron.Minutely()
               );
 
+            /*
             RecurringJob.AddOrUpdate(
                "processarEmails",
                () => paymentService.ProcessarEmails(),
-              //"*/30 * * * * *"
               Cron.Yearly()
               );
-
+            */
 
         }
 
