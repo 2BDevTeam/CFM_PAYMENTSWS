@@ -23,6 +23,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         public virtual DbSet<U2bPayments> U2bPayments { get; set; } = null!;
         public virtual DbSet<U2bPaymentsQueue> U2bPaymentsQueue { get; set; } = null!;
         public virtual DbSet<U2bPaymentsHs> U2bPaymentsHs { get; set; } = null!;
+      
         public virtual DbSet<E4> E4 { get; set; } = null!;
         public virtual DbSet<UProvider> UProvider { get; set; } = null!;
         public virtual DbSet<ApiKey> ApiKey { get; set; } = null!;
@@ -79,6 +80,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
             }
             modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
 
+            
             modelBuilder.Entity<Suliame>(entity =>
             {
                 entity.HasKey(e => e.Userno);

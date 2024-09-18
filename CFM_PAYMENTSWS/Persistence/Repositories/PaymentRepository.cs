@@ -121,6 +121,26 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         .Where(upayment => upayment.BatchId == batchId).ToList();
         }
 
+        /*
+        public List<U2bPayments> GetPaymentsBatchId2(string batchId)
+        {
+            if (_isTestEnvironment)
+            {
+                // Use the test table U2bPaymentsTs
+                return _context.Set<U2bPaymentsTs>() // Assuming U2bPaymentsTs is another entity
+                               .Where(upayment => upayment.BatchId == batchId)
+                               .ToList();
+            }
+            else
+            {
+                // Use the production table U2bPayments
+                return _context.Set<U2bPayments>()
+                               .Where(upayment => upayment.BatchId == batchId)
+                               .ToList();
+            }
+        }
+        */
+
         public List<U2bPaymentsQueue> GetPaymentsQueueBatchId( string batchId)
         {
             return _context.Set<U2bPaymentsQueue>()
@@ -128,12 +148,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                           .ToList();
         }
 
-        public Suliame getUserEmail(int userno)
-        {
-            return _context.Set<Suliame>()
-                    .Where(provider => provider.Userno== userno)
-                    .FirstOrDefault();
-        }
+        
 
 
     }

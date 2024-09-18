@@ -90,54 +90,6 @@ namespace CFM_PAYMENTSWS.Services
 
         }
 
-        public void ProcessarEmails()
-        {
-            string lockKey = "processarEmails";
-
-            if (VerificarJobActivos(lockKey))
-                return;
-
-            try
-            {
-
-                var liames = _phcRepository.GetLiameProcessado(false);
-
-                foreach (var liame in liames)
-                {
-                    var suliame = _paymentRespository.getUserEmail(int.Parse(liame.Userno));
-
-                    //O liame.Corpo só vem com o trecho de codigo do OTP, o restante do html deve ser completado pelo Fullbody
-                    var fullBody = _phcRepository.GetFullBody(liame.Corpo);
-
-                    //Chamada da SP de Envio de Emails
-                    var email = _phcRepository.SendEmail(suliame.Email, liame.Assunto, fullBody);
-
-                    Debug.Print($"email {suliame.Email}");
-                    Debug.Print($"corpo {liame.Corpo}");
-                    Debug.Print($"emailReport {email}");
-
-                    liame.Processado = true;
-                    _genericPHCRepository.Update(liame);
-                    _genericPHCRepository.SaveChanges();
-
-                    var response = new ResponseDTO(new ResponseCodesDTO("0000", "Emails"), email, null);
-                    logHelper.generateLogJB(response, "processarEmails-" + Guid.NewGuid(), "PaymentService.processarEmails", email);
-                }
-
-            }
-            catch (Exception ex)
-            {
-                Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
-                var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
-                logHelper.generateLogJB(response, "processarPagamento" + Guid.NewGuid(), "PaymentService.processarPagamento", ex.Message);
-            }
-            finally
-            {
-                TerminarJob(lockKey);
-            }
-
-        }
-
 
         public bool VerificarJobActivos(string lockKey)
         {
@@ -245,14 +197,71 @@ namespace CFM_PAYMENTSWS.Services
 
                         switch (pagamento.StatusCode)
                         {
+                            case "0000":
+                                actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso", paymentHeader, pagamento);
+                                break;
+
+                            case "0001":
+                                actualizarEstadoDoPagamentoByTransactionId("Recebido", "Atualização recebida", paymentHeader, pagamento);
+                                break;
+
+                            case "0010":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "NIB de crédito inválido", paymentHeader, pagamento);
+                                break;
+
+                            case "0011":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Montante inválido", paymentHeader, pagamento);
+                                break;
+
+                            case "0012":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Conta de débito inválida", paymentHeader, pagamento);
+                                break;
+
+                            case "0013":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Incompatibilidade de moeda", paymentHeader, pagamento);
+                                break;
+
+                            case "0014":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Data de processamento inválida ou passada", paymentHeader, pagamento);
+                                break;
+
+                            case "0015":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Moeda inválida", paymentHeader, pagamento);
+                                break;
+
+                            case "0016":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "BatchId já submetido", paymentHeader, pagamento);
+                                break;
+
+                            case "0017":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Registros vazios", paymentHeader, pagamento);
+                                break;
+
                             case "1000":
                                 actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso", paymentHeader, pagamento);
                                 break;
 
+                            case "1001":
+                                actualizarEstadoDoPagamentoByTransactionId("Pendente", "Pagamento pendente", paymentHeader, pagamento);
+                                break;
+
+                            case "0019":
+                                actualizarEstadoDoPagamentoByTransactionId("Processado", "Pagamento processado ou pendente", paymentHeader, pagamento);
+                                break;
+
+                            case "0020":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Batch rejeitado", paymentHeader, pagamento);
+                                break;
+
+                            case "0050":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "BatchId não encontrado", paymentHeader, pagamento);
+                                break;
+
                             default:
-                                actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso", paymentHeader, pagamento);
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Código de status desconhecido", paymentHeader, pagamento);
                                 break;
                         }
+
                     }
                 }
             }
@@ -283,6 +292,8 @@ namespace CFM_PAYMENTSWS.Services
                                      .FirstOrDefault();
 
             var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Oristamp);
+
+
 
             Debug.Print("Prontos para actualziar");
             if (payment != null)
@@ -351,6 +362,7 @@ namespace CFM_PAYMENTSWS.Services
             _genericPHCRepository.SaveChanges();
 
         }
+
 
 
 

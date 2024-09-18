@@ -101,116 +101,12 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         }
 
 
-        public string SendEmail(string email, string subject, string body)
-        {
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile($"appsettings.json");
-
-            var config = configuration.Build();
-            var connectionString = config.GetConnectionString("ConnStrE14");
-            Debug.Print($"connectionString {connectionString}");
-
-
-            using (var connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-
-                using (var command = new SqlCommand("EXEC msdb.dbo.sp_send_dbmail @profile_name = 'CFM-NoReply', @recipients = @EmailAddress, @subject = @Subject, @body = @FinalBody, @body_format = 'HTML';", connection))
-                {
-                    command.Parameters.AddWithValue("@EmailAddress", email);
-                    command.Parameters.AddWithValue("@Subject", subject);
-                    command.Parameters.AddWithValue("@FinalBody", body);
-
-                    command.ExecuteNonQuery();
-                }
-
-                using (var checkCommand = new SqlCommand(
-                    "SELECT TOP 1 mailitem_id, recipients, subject, send_request_date, sent_status " +
-                    "FROM msdb.dbo.sysmail_allitems " +
-                    "WHERE recipients = @EmailAddress " +
-                    "ORDER BY send_request_date DESC", connection))
-                {
-                    checkCommand.Parameters.AddWithValue("@EmailAddress", email);
-                    using (var reader = checkCommand.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            var response = new
-                            {
-                                MailId = reader["mailitem_id"],
-                                Recipients = reader["recipients"],
-                                Subject = reader["subject"],
-                                SendRequestDate = reader["send_request_date"],
-                                Status = reader["sent_status"]
-                            };
-
-                            return JsonConvert.SerializeObject(response);
-                        }
-                        else
-                        {
-                            return "failed";
-                        }
-                    }
-                }
-
-            }
-        }
-
-        public string GetFullBody(string corpo)
-        {
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
-                .Build();
-
-            var connectionString = configuration.GetConnectionString("ConnStrE14");
-            Debug.Print($"connectionString: {connectionString}");
-
-            string emailBody = "";
-
-            using (var connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-
-                using (var command = new SqlCommand("SELECT dbo.u_2b_fn_formatEmail(@body, @subtitle)", connection))
-                {
-                    command.Parameters.AddWithValue("@body", corpo);
-                    command.Parameters.AddWithValue("@subtitle", "O seu código OTP"); 
-
-                    emailBody = (string)command.ExecuteScalar();
-                }
-            }
-
-            return emailBody;
-        }
-
-
 
         /*
         public Ft2 GetFt2(string ft2stamp)
         {
             return _context.Set<Ft2>().
                 FirstOrDefault(ft => ft.Ft2stamp == ft2stamp);
-        }
-
-        public Para1 GetPara1(string descricao)
-        {
-            return _context.Set<Para1>().
-                FirstOrDefault(p1 => p1.Descricao == descricao);
-        }
-
-        public List<Ml> GetMlByDate(DateTime initialDate, DateTime finalDate)
-        {
-            return _context.Set<Ml>()
-                .ToList();
-        }
-
-
-        public Para1 GetPara1ByDescricao(string descricao)
-        {
-            return _context.Set<Para1>()
-                .FirstOrDefault(p1 => p1.Descricao == descricao);
         }
 
         */
