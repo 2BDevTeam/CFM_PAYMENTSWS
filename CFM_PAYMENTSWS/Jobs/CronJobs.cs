@@ -23,13 +23,6 @@ namespace CFM_PAYMENTSWS.Jobs
               Cron.Minutely()
               );
 
-            RecurringJob.AddOrUpdate(
-              "processarPagamentosTeste",
-              () => paymentService.ProcessarPagamentos(),
-             Cron.Daily()
-             );
-
-
 
         }
 
