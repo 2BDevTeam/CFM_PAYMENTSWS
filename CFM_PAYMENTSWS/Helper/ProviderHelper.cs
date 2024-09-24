@@ -18,7 +18,7 @@ namespace CFM_PAYMENTSWS.Helper
 
 
             var config = configuration.Build();
-            var connString = config.GetConnectionString("ConnStrE14");
+            var connString = config.GetConnectionString("ConnStr");
             optionsBuilder.UseSqlServer(connString);
 
 
