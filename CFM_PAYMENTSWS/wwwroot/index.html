@@ -1,0 +1,65 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disponibilidade do Servidor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            padding: 30px 35px 20px 35px;
+            border-radius: 10px;
+            background-color: #e6ffe6; 
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative; 
+        }
+
+        h1 {
+            color: #006600; 
+        }
+
+        .logo {
+            width: 200px;
+            margin-bottom: -75px;
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            color: black;
+            text-align: center;
+            border-top: 2px solid rgba(0, 0, 0, 0.1);
+        }
+        .container h1 {
+            font-size: 1.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="./images/CFM.jpg" alt="Logo CFM" class="logo">
+        <h1>O Web Server está a funcionar corretamente.</h1>
+    </div>
+    <div class="footer">
+        <p>CFM PHC</p>
+    </div>
+</body>
+</html>

@@ -40,6 +40,7 @@
     <Folder Include="Persistence\APIs\DTOs\" />
     <Folder Include="Persistence\APIs\Lenmed\Responses\" />
     <Folder Include="Persistence\Contexts\NewFolder\" />
+    <Folder Include="wwwroot\css\" />
   </ItemGroup>
 
 </Project>

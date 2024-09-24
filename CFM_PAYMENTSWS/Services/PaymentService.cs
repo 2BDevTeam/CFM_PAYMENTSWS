@@ -68,7 +68,7 @@ namespace CFM_PAYMENTSWS.Services
                     switch (pagamento.canal)
                     {
                         case 105:
-                            NedBankProcessing(pagamento);
+                            //NedBankProcessing(pagamento);
 
                             break;
                         default:
@@ -328,7 +328,8 @@ namespace CFM_PAYMENTSWS.Services
                     po.Process = true;
                     po.URefbanco = pagamento.BankReference;
                     po.Dvalor = paymentHeader.ProcessingDate;
-
+                    po.Tbcheque = pagamento.BankReference;
+                    
                     break;
 
                 case "PD":
@@ -337,6 +338,7 @@ namespace CFM_PAYMENTSWS.Services
                     //pd.Process = true;
                     pd.URefbanco = pagamento.BankReference;
                     pd.Rdata = paymentHeader.ProcessingDate;
+                    pd.Cheque=pagamento.BankReference.ToString();
 
                     break;
 
@@ -344,8 +346,17 @@ namespace CFM_PAYMENTSWS.Services
                     var ol = _phcRepository.GetOw(paymentQueue.Oristamp);
 
                     //ol.Process = true;
-                    //ol.URefbanco = pagamento.BankReference;
                     ol.Dvalor = paymentHeader.ProcessingDate;
+                    ol.Cheque = pagamento.BankReference;
+
+                    break;
+                case "TB":
+                    /*
+                    var tb = _phcRepository.GetOw(paymentQueue.Oristamp);
+
+                    tb.Dvalor = paymentHeader.ProcessingDate;
+                    tb.Cheque = pagamento.BankReference;
+                    */
 
                     break;
                 default:

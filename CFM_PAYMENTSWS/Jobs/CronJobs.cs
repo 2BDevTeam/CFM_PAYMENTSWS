@@ -22,7 +22,7 @@ namespace CFM_PAYMENTSWS.Jobs
                () => paymentService.ProcessarPagamentos(),
               Cron.Minutely()
               );
-
+            
 
         }
 
