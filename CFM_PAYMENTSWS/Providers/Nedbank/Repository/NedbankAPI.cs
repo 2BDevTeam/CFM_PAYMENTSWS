@@ -6,6 +6,8 @@ using CFM_PAYMENTSWS.Helper;
 using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using System.Diagnostics;
 using System.Net;
+using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 
 namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
 {
@@ -29,7 +31,13 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
 
                     Debug.Print($"loadPayments {json} ");
 
-                    streamWriter.Write(json);
+                    JObject jsonObject = JObject.Parse(json);
+                    RemoveNullProperties(jsonObject);
+
+                    string cleanedJson = jsonObject.ToString(Formatting.None);
+                    Debug.Print(cleanedJson);
+
+                    streamWriter.Write(cleanedJson);
                     streamWriter.Flush();
                     streamWriter.Close();
                 }
@@ -147,5 +155,37 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
                 // return getGeneralExceptionResponse(ex, consumidores, "ForUTechRepository.inserirConsumidores");
             }
         }
+
+        public void RemoveNullProperties(JToken token)
+        {
+            if (token.Type == JTokenType.Object)
+            {
+                var propertiesToRemove = new List<JProperty>();
+                foreach (var property in token.Children<JProperty>())
+                {
+                    if (property.Value.Type == JTokenType.Null)
+                    {
+                        propertiesToRemove.Add(property);
+                    }
+                    else
+                    {
+                        RemoveNullProperties(property.Value);
+                    }
+                }
+
+                foreach (var property in propertiesToRemove)
+                {
+                    property.Remove();
+                }
+            }
+            else if (token.Type == JTokenType.Array)
+            {
+                foreach (var item in token.Children())
+                {
+                    RemoveNullProperties(item);
+                }
+            }
+        }
+
     }
 }

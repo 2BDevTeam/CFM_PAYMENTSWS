@@ -26,20 +26,12 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
         public List<PaymentsQueue> GetPagamentQueue(string estado)
         {
-            EncryptionHelper encryptionHelper= new EncryptionHelper();
+            EncryptionHelper encryptionHelper = new EncryptionHelper();
+
 
             Debug.Print("Get Pagamento queue");
             try
             {
-                /*
-                var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile($"appsettings.json");
-
-                var config = configuration.Build();
-                var connString = "";
-                connString=config.GetConnectionString("ConnStr");
-                */
 
                 var pagamentos = _context.Set<U2bPaymentsQueue>()
                     .Where(payment => payment.Estado == estado)
@@ -54,7 +46,8 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                             Description = group.First().Description,
                             ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
                             DebitAccount = group.First().Origem,
-
+                            initgPty_Code = GetAuxCamposEntityCode(group.First().Canal),
+                            BatchBooking = GetAuxCamposBatchBooking(group.First().Tabela, group.First().Canal),
                             PaymentRecords = group.Select(paymentRecord => new PaymentRecords
                             {
                                 Amount = paymentRecord.Valor,
@@ -86,6 +79,33 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 Debug.Print($"EXCEPCAO TEST GROUP {ex.Message} INNER {ex.InnerException} STACK TRACE {ex.StackTrace}");
                 throw; // Re-lança a exceção para que a chamada do método possa lidar com ela, se necessário
             }
+        }
+
+        private static string? GetAuxCamposBatchBooking(string tabela, int provider)
+        {
+            var validProviders = new List<int> { 106 };
+
+            if (validProviders.Contains(provider))
+            {
+                if (tabela == "TB")
+                    return "Salários";
+                else
+                    return "Fornecedores";
+            }
+
+            return null;
+        }
+
+        private static string? GetAuxCamposEntityCode(int provider)
+        {
+            var validProviders = new List<int> { 106 };
+
+            if (validProviders.Contains(provider))
+            {
+                return "CFM";
+            }
+
+            return null;
         }
 
         public List<UProvider> getProviderData(decimal providerCode)
@@ -141,14 +161,14 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         }
         */
 
-        public List<U2bPaymentsQueue> GetPaymentsQueueBatchId( string batchId)
+        public List<U2bPaymentsQueue> GetPaymentsQueueBatchId(string batchId)
         {
             return _context.Set<U2bPaymentsQueue>()
                           .Where(u2BPaymentsQueue => u2BPaymentsQueue.BatchId == batchId)
                           .ToList();
         }
 
-        
+
 
 
     }

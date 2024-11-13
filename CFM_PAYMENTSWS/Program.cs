@@ -124,6 +124,7 @@ builder.Services.AddHangfire(configuration => configuration.UseSqlServerStorage(
 
 }));
 
+builder.Services.AddHangfireServer();
 
 //builder.Services.AddControllers(o =>
 //{
@@ -134,7 +135,6 @@ builder.Services.Configure<KestrelServerOptions>(options =>
 {
     options.AllowSynchronousIO = true;
 });
-//builder.Services.AddHangfireServer();
 
 var app = builder.Build();
 

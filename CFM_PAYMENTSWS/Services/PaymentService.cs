@@ -172,8 +172,8 @@ namespace CFM_PAYMENTSWS.Services
 
             Debug.Print("paymentRecordResponseDTOs" + json1);
 
-            logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.validarPagamentos", json1);
-
+            logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.actualizarPagamentos", json1);
+            //validarPagamentos
             try
             {
                 if (paymentHeader != null)
@@ -296,6 +296,7 @@ namespace CFM_PAYMENTSWS.Services
 
 
             Debug.Print("Prontos para actualziar");
+            Debug.Print($"Payment Queue {JsonConvert.SerializeObject(paymentQueue)}");
             if (payment != null)
             {
                 payment.Dataprocessado = DateTime.Now;

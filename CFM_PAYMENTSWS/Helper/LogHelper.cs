@@ -76,10 +76,6 @@ namespace CFM_PAYMENTSWS.Helper
                 context.Log.Add(log);
                 context.SaveChanges();
 
-                //   }
-
-
-                //your logic
             }
         }
 
