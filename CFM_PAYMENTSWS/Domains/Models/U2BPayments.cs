@@ -28,7 +28,7 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public string? Keystamp { get; set; }
         public string? Docno { get; set; }
         public bool? Lancadonatesouraria { get; set; }
-        public string? MpesaTransactionid { get; set; }
+        public string? Tipo { get; set; }
         public string BatchId { get; set; } = null!;
         public bool Checked { get; set; }
         public DateTime ProcessingDateHs { get; set; }

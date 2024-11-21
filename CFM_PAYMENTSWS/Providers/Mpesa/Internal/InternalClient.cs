@@ -1,6 +1,7 @@
 using MPesa.helpers;
 using MPesa.security;
 using System;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -60,6 +61,7 @@ namespace MPesa.Internal
             {
                 httpResponseMessage = await HttpClientHelper.HttpClientCallAsync(request, AuthorizationToken,
                     ConstantsHelper.PORT_B2C, ServiceProviderCode);
+                Debug.Print($"MPESA MAIN RESPONSE {httpResponseMessage}");
 
                 mpesaResponse = await HttpClientHelper.DeserializeResponseMessage(httpResponseMessage);
             }

@@ -35,6 +35,14 @@ namespace CFM_PAYMENTSWS.Helper
         }
 
 
+        public decimal generateResponseID()
+        {
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            // Convert the timestamp to a 16-digit string
+            decimal sixteenDigitNumber = decimal.Parse(timestamp.ToString("D16"));
+            return sixteenDigitNumber;
+        }
         public void generateLog(ResponseDTO response, string requestId, string operation, object contentlog)
         {
             try
@@ -49,6 +57,32 @@ namespace CFM_PAYMENTSWS.Helper
             }
 
 
+        }
+
+
+        public void generateLogJB_PHC(ResponseDTO response, string requestId, string operation)
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<PHCDbContext>();
+            var configuration = new ConfigurationBuilder()
+           .SetBasePath(Directory.GetCurrentDirectory())
+           .AddJsonFile($"appsettings.json");
+
+
+
+            var config = configuration.Build();
+            var connString = config.GetConnectionString("ConnStrE14");
+            optionsBuilder.UseSqlServer(connString);
+
+
+            using (PHCDbContext context = new PHCDbContext(optionsBuilder.Options))
+            {
+               
+                Log log = new Log { Code = response?.response?.cod, RequestId = requestId, ResponseDesc = response?.Data?.ToString(), Data = DateTime.Now, Content = response?.Content?.ToString(), Operation = operation };
+
+                //context.Log.Add(log);
+                //context.SaveChanges();
+             
+            }
         }
 
 

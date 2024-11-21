@@ -1,5 +1,6 @@
 ﻿using MPesa.Internal;
 using System;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -68,10 +69,12 @@ namespace MPesa.helpers
 
         private static HttpClient BuildHttpClientHeader(string authorizationToken, int port)
         {
+            //var http = new HttpClient {BaseAddress = new Uri($"https://api.vm.co.mz:{port}")};
             var http = new HttpClient {BaseAddress = new Uri($"https://api.sandbox.vm.co.mz:{port}")};
 
             http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             http.DefaultRequestHeaders.Add("Authorization", $" Bearer {authorizationToken}");
+            //http.DefaultRequestHeaders.Add("Origin", "vm.co.mz");
             http.DefaultRequestHeaders.Add("Origin", "developer.mpesa.vm.co.mz");
 
             return http;
@@ -81,6 +84,8 @@ namespace MPesa.helpers
         private static StringContent BuildStringContent(MpesaRequest mpesaRequest)
         {
             var json = JsonSerializer.Serialize(mpesaRequest);
+
+            Debug.Print($" PARAMS ON REQUEST {mpesaRequest}");
             var data = new StringContent(json, Encoding.UTF8, "application/json");
 
             return data;
@@ -90,6 +95,7 @@ namespace MPesa.helpers
         public static async Task<MpesaResponse> DeserializeResponseMessage(HttpResponseMessage httpResponseMessage)
         {
             var readAsStringAsync = await httpResponseMessage.Content.ReadAsStringAsync();
+            Debug.Print($"readAsStringAsync DeserializeResponseMessage {readAsStringAsync}");
 
             var mpesaResponse = JsonSerializer.Deserialize<MpesaResponse>(readAsStringAsync);
 

@@ -69,7 +69,7 @@ namespace CFM_PAYMENTSWS.Helper
                     if (decryptedObject != null && decryptedObject != DBNull.Value)
                     {
                         string decryptedText = decryptedObject.ToString();
-                        Debug.Print("DESENCRYPTED KEY: " + decryptedText);
+                        //Debug.Print("DESENCRYPTED KEY:   " + decryptedText);
                         return decryptedText;
                     }
                     else
@@ -97,10 +97,10 @@ namespace CFM_PAYMENTSWS.Helper
                     if (decryptedObject != null && decryptedObject != DBNull.Value)
                     {
                         string decryptedText = decryptedObject.ToString();
-                        Debug.Print("DECRYPTED TEXT: " + decryptedText);
+                        //Debug.Print("DECRYPTED TEXT:   " + decryptedText);
                         return decryptedText;
                     }
-                    // No need to throw an exception here as we're already returning null in this case.
+
                 }
             }
 

@@ -19,6 +19,7 @@ using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
 using System.Threading.Tasks.Dataflow;
 using MPesa;
+using CFM_PAYMENTSWS.Providers.Mpesa;
 
 namespace CFM_PAYMENTSWS.Services
 {
@@ -27,6 +28,7 @@ namespace CFM_PAYMENTSWS.Services
         private readonly LogHelper logHelper = new LogHelper();
         private readonly ProviderHelper providerHelper = new ProviderHelper();
         private readonly RouteMapper routeMapper = new RouteMapper();
+        private readonly MpesaAPI mpesaApi = new MpesaAPI();
 
         private readonly TimeSpan _lockTimeout = TimeSpan.FromMinutes(5);
 
@@ -48,45 +50,6 @@ namespace CFM_PAYMENTSWS.Services
 
         public PaymentService()
         {
-
-        }
-
-
-        public void ProcessarPagamentos()
-        {
-            string lockKey = "processarPagamentos";
-
-            if (VerificarJobActivos(lockKey))
-                return;
-
-            try
-            {
-                var pagamentos = _paymentRespository.GetPagamentQueue("Por enviar");
-
-                foreach (var pagamento in pagamentos)
-                {
-                    switch (pagamento.canal)
-                    {
-                        case 105:
-                            NedBankProcessing(pagamento);
-
-                            break;
-                        default:
-                            break;
-                    }
-                }
-
-            }
-            catch (Exception ex)
-            {
-                Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
-                var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
-                logHelper.generateLogJB(response, "processarPagamento" + Guid.NewGuid(), "PaymentService.processarPagamento", ex.Message);
-            }
-            finally
-            {
-                TerminarJob(lockKey);
-            }
 
         }
 
@@ -122,47 +85,58 @@ namespace CFM_PAYMENTSWS.Services
             _genericPHCRepository.SaveChanges();
         }
 
-        void NedBankProcessing(PaymentsQueue pagamento)
+
+        public async Task ProcessarPagamentosAsync()
         {
+            string lockKey = "processarPagamentos";
 
-            NedbankAPI nedbankRepository = new NedbankAPI();
-            NedbankResponseDTO nedbankResponseDTO = nedbankRepository.loadPayments(pagamento.payment);
+            if (VerificarJobActivos(lockKey))
+                return;
 
-            ResponseDTO nedbankResponse = routeMapper.mapLoadPaymentResponse(105, nedbankResponseDTO);
-
-            Debug.Print("Resposta do Load");
-            Debug.Print(nedbankResponse.ToString());
-
-            insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
-
-            switch (nedbankResponse.response.cod)
+            try
             {
-                case "0011":
-                    actualizarEstadoDoPagamento(pagamento, "Por corrigir", nedbankResponse.response.codDesc);
-                    Debug.Print("Teste Por Corrigir" + nedbankResponse.response.codDesc);
-                    break;
+                var canaisPagamento = _paymentRespository.GetCanais_UPaymentQueue();
+                Debug.Print($"canaisPagamento   {JsonConvert.SerializeObject(canaisPagamento)} ");
 
-                case "0000":
-                    actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
-                    Debug.Print("Teste Por processar" + nedbankResponse.response.codDesc);
-                    break;
+                List<U2bPaymentsQueue> pagamentoQueue = new();
+                List<PaymentsQueue> pagamentos = new();
+                foreach (var canal in canaisPagamento)
+                {
 
-                case "0010":
-                    break;
+                    switch (canal)
+                    {
+                        case 101:
 
-                case "0007":
-                    Debug.Print("Teste HS2" + nedbankResponse.response.codDesc);
-                    break;
+                            pagamentoQueue = _paymentRespository.GetPagamentosEmFila("Por enviar", 101);
+                            Debug.Print($"Pagamento queue   {JsonConvert.SerializeObject(pagamentoQueue)} ");
+                            await MpesaProcessing(pagamentoQueue);
+                            break;
 
-                default:
-                    Debug.Print("Teste HS3" + nedbankResponse.response.codDesc);
-                    break;
+                        case 105:
+                            pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 105);
+                            NedBankProcessing(pagamentos);
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                }
+
 
             }
-            logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+            catch (Exception ex)
+            {
+                Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
+                var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
+                logHelper.generateLogJB(response, "processarPagamento" + Guid.NewGuid(), "PaymentService.processarPagamento", ex.Message);
+            }
+            finally
+            {
+                TerminarJob(lockKey);
+            }
 
         }
-
 
         public async Task<ResponseDTO> actualizarPagamentos(PaymentCheckedDTO paymentHeader)
         {
@@ -275,6 +249,222 @@ namespace CFM_PAYMENTSWS.Services
             return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
         }
 
+        void NedBankProcessing(List<PaymentsQueue> pagamentos)
+        {
+
+            foreach (var pagamento in pagamentos)
+            {
+
+                NedbankAPI nedbankRepository = new NedbankAPI();
+                NedbankResponseDTO nedbankResponseDTO = nedbankRepository.loadPayments(pagamento.payment);
+
+                ResponseDTO nedbankResponse = routeMapper.mapLoadPaymentResponse(105, nedbankResponseDTO);
+
+                Debug.Print("Resposta do Load");
+                Debug.Print(nedbankResponse.ToString());
+
+                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
+
+                switch (nedbankResponse.response.cod)
+                {
+                    case "0011":
+                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", nedbankResponse.response.codDesc);
+                        Debug.Print("Teste Por Corrigir" + nedbankResponse.response.codDesc);
+                        break;
+
+                    case "0000":
+                        actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
+                        Debug.Print("Teste Por processar" + nedbankResponse.response.codDesc);
+                        break;
+
+                    case "0010":
+                        break;
+
+                    case "0007":
+                        Debug.Print("Teste HS2" + nedbankResponse.response.codDesc);
+                        break;
+
+                    default:
+                        Debug.Print("Teste HS3" + nedbankResponse.response.codDesc);
+                        break;
+
+                }
+                logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+
+            }
+
+        }
+
+        async Task MpesaProcessing(List<U2bPaymentsQueue> pagamentos)
+        {
+            foreach (var pagamento in pagamentos)
+            {
+                try
+                {
+                    Debug.Print($" PROCESSANDO O PAGAMENTO {pagamento.TransactionId}");
+                    var estadoDoPagamento = await mpesaApi.PaymentQueryProviderRoute(pagamento);
+                    var response = new ResponseDTO(estadoDoPagamento.response, estadoDoPagamento.Data, pagamento.ToString());
+
+
+                    //var response = await providerRoute.paymentProviderRoute(pagamento);
+                    //logHelper.generateLogJB(response, pagamento.transactionId, "PaymentService.processarPagamento");
+                    Debug.Print($"ESTADO DO PAGAMENTO {response.ToString()}");
+                    //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+
+                    switch (estadoDoPagamento.response.cod)
+                    {
+                        case "00077":
+                            response = await mpesaApi.B2CpaymentProviderRoute(pagamento);
+                            Debug.Print($"RESPOSTA DO PAGAMENTO 00077 {response.ToString()}");
+                            logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
+                            _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+
+                            break;
+
+
+
+                        case "0000":
+                            Debug.Print($"Pagamento Existente");
+                            response = new ResponseDTO(new ResponseCodesDTO("0000", "Success"), estadoDoPagamento.Data, pagamento.ToString());
+                            logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
+                            _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+
+                            break;
+
+                        case "0002":
+
+                            response = await mpesaApi.B2CpaymentProviderRoute(pagamento);
+                            Debug.Print($"RESPOSTA DO PAGAMENTO 0002 {response.ToString()}");
+                            logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
+                            _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+                            
+                            break;
+
+                    }
+
+
+                }
+
+                catch (Exception ex)
+                {
+                    Debug.Print($" ERRO ao processar o pagamento com transactionId {pagamento.TransactionId.ToString()}   MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}");
+
+                    var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $" ERRO ao processar o pagamento com transactionId {pagamento.TransactionId.ToString()}   MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
+
+                    logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
+
+
+                }
+            }
+
+
+        }
+
+
+        public async Task<RespostaDTO> ProcessarPagamentos(PaymentDetailsDTO pagamento)
+        {
+            //decimal responseID = logHelper.generateResponseID().Value;
+            decimal responseID = 0;
+            RespostaDTO respostaDTO = new();
+
+            try
+            {
+
+                List<UProvider> providerData = _phcRepository.GetUProvider(pagamento.Canal);
+                var serviceProviderCodeData = providerData.Where(providerData => providerData.chave == "serviceProviderCode").FirstOrDefault();
+
+                U2bPayments u2BPayments = new U2bPayments
+                {
+                    U2bPaymentsstamp = 25.UseThisSizeForStamp(),
+                    Oristamp = pagamento.Oristamp,
+                    Tabela = pagamento.Tabela,
+                    Valor = pagamento.Valor,
+                    Moeda = "MZN",
+                    Canal = (int)pagamento.Canal,
+                    Transactionid = pagamento.Referencia,
+                    Origem = pagamento.MSISDN,
+                    Destino = serviceProviderCodeData.valor,
+                    Tipo = "Carteira Móvel",
+                    Estado = "Por Enviar",
+                    Descricao = "Pagamento por enviar",
+
+                    Ousrdata = DateTime.Now.Date,
+                    Ousrhora = DateTime.Now.ToString("HH:mm"),
+                    Ousrinis = "2bPayments",
+                };
+
+                Debug.Print($"U2bPayments    {JsonConvert.SerializeObject(u2BPayments)}");
+
+                _genericPHCRepository.Add(u2BPayments);
+                _genericPHCRepository.SaveChanges();
+
+
+                Debug.Print($" PROCESSANDO O PAGAMENTO {pagamento.Referencia}");
+                var estadoDoPagamento = await mpesaApi.PaymentQueryProviderRoute(pagamento);
+                var response = new ResponseDTO(estadoDoPagamento.response, estadoDoPagamento.Data, pagamento.ToString());
+
+
+                //var response = await providerRoute.paymentProviderRoute(pagamento);
+                //logHelper.generateLogJB(response, pagamento.transactionId, "PaymentService.processarPagamento");
+                Debug.Print($"ESTADO DO PAGAMENTO {response}");
+                //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+
+                switch (estadoDoPagamento.response.cod)
+                {
+                    case "00077":
+                        response = await mpesaApi.C2BPaymentProviderRoute(pagamento);
+                        Debug.Print($"RESPOSTA DO PAGAMENTO 00077 {(response.Data as Response)?.Description}");
+                        logHelper.generateLogJB_PHC(response, pagamento.Referencia, "PaymentService.processarPagamento");
+
+                        //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+                        break;
+
+
+                    case "0000":
+                    case "000":
+                        Debug.Print($"Pagamento Existente  {(response.Data as Response)?.Description} .");
+                        response = new ResponseDTO(new ResponseCodesDTO("0000", "Success"), estadoDoPagamento.Data, pagamento.ToString());
+                        logHelper.generateLogJB_PHC(response, pagamento.Referencia, "PaymentService.processarPagamento");
+
+                        //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+                        break;
+
+                    case "0002":
+
+                        response = await mpesaApi.C2BPaymentProviderRoute(pagamento);
+                        Debug.Print($"RESPOSTA DO PAGAMENTO  0002  {response}");
+                        logHelper.generateLogJB_PHC(response, pagamento.Referencia, "PaymentService.processarPagamento");
+
+                        //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+                        break;
+
+                }
+
+                //var response = new ResponseDTO(new ResponseCodesDTO("0000", "Success", responseID), null, null);
+
+                respostaDTO = GerarResposta((response.Data as Response), responseID);
+
+                u2BPayments.Estado = respostaDTO.Estado;
+                u2BPayments.Descricao = respostaDTO.Descricao;
+                _genericPHCRepository.SaveChanges();
+
+
+                return respostaDTO;
+            }
+            catch (Exception ex)
+            {
+                var errorDTO = new ErrorDTO { message = ex?.Message, stack = ex?.StackTrace?.ToString(), inner = ex?.InnerException?.ToString() + "  " };
+                Debug.Print($"GetGLTransactions ERROR {errorDTO}");
+                var finalResponse = new ResponseDTO(new ResponseCodesDTO("0007", "Error", logHelper.generateResponseID()), errorDTO.ToString(), null);
+                //logHelper.generateResponseLogJB(finalResponse, logHelper.generateResponseID().ToString(), "GetGLTransactions", errorDTO?.ToString());
+                logHelper.generateLogJB_PHC(finalResponse, logHelper.generateResponseID().ToString(), "GetGLTransactions");
+
+                respostaDTO = new RespostaDTO("", "0007", errorDTO.message);
+                return respostaDTO;
+            }
+        }
+
+
         public void actualizarEstadoDoPagamentoByTransactionId(string estado, string descricao, PaymentCheckedDTO paymentHeader, PaymentCheckedRecordsDTO pagamento)
         {
 
@@ -301,9 +491,9 @@ namespace CFM_PAYMENTSWS.Services
             {
                 payment.Dataprocessado = DateTime.Now;
                 payment.Estado = estado;
-                payment.Descricao= descricao;
+                payment.Descricao = descricao;
                 payment.Usrdata = DateTime.Now;
-                payment.BankReference= pagamento.BankReference;
+                payment.BankReference = pagamento.BankReference;
             }
 
             if (wspayment != null)
@@ -330,7 +520,7 @@ namespace CFM_PAYMENTSWS.Services
                     po.URefbanco = pagamento.BankReference;
                     po.Dvalor = paymentHeader.ProcessingDate;
                     po.Tbcheque = pagamento.BankReference;
-                    
+
                     break;
 
                 case "PD":
@@ -339,7 +529,7 @@ namespace CFM_PAYMENTSWS.Services
                     //pd.Process = true;
                     pd.URefbanco = pagamento.BankReference;
                     pd.Rdata = paymentHeader.ProcessingDate;
-                    pd.Cheque=pagamento.BankReference.ToString();
+                    pd.Cheque = pagamento.BankReference.ToString();
 
                     break;
 
@@ -366,7 +556,8 @@ namespace CFM_PAYMENTSWS.Services
             }
 
             var trfb = _phcRepository.GetUTrfb(paymentQueue.BatchId);
-            if (trfb != null) {
+            if (trfb != null)
+            {
                 trfb.Rdata = paymentHeader.ProcessingDate;
             }
 
@@ -374,9 +565,6 @@ namespace CFM_PAYMENTSWS.Services
             _genericPHCRepository.SaveChanges();
 
         }
-
-
-
 
         public void actualizarEstadoDoPagamento(PaymentsQueue u2BPayments, string estado, string descricao)
         {
@@ -416,8 +604,6 @@ namespace CFM_PAYMENTSWS.Services
             _genericPaymentRepository.SaveChanges();
         }
 
-
-
         public void insere2bHistorico(string transactionId, string batchid, string oristamp, string codStatusHs, string descStatusHs, string codStatus, string descStatus)
         {
             Debug.Print("Insere HS na actualizacao");
@@ -449,8 +635,29 @@ namespace CFM_PAYMENTSWS.Services
             _genericPaymentRepository.SaveChanges();
         }
 
+        public RespostaDTO GerarResposta(Response response, decimal responseID)
+        {
+            RespostaDTO responseDto = new RespostaDTO();
 
-        
+            switch (response.Code)
+            {
+                case "INS-0":
+                    responseDto = new RespostaDTO("0000", "Sucesso", "Processado com sucesso");
+                    break;
+                case "INS-6":
+                    responseDto = new RespostaDTO("0001", "Erro", "Transação falhou");
+                    break;
+                case "INS-9":
+                    responseDto = new RespostaDTO("0002", "Erro", "Timeout na requisição");
+                    break;
+
+            }
+
+            responseDto.Id = responseID;
+
+            return responseDto;
+        }
+
     }
 
 }

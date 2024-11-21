@@ -47,7 +47,7 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddDefaultTokenProviders();
 
 
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStr")));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStr")), ServiceLifetime.Scoped);
 builder.Services.AddDbContext<PHCDbContext>(options => options.UseSqlServer(configuration.GetConnectionString("ConnStrE14")));
 builder.Services.AddScoped<IGenericRepository<AppDbContext>, GenericRepository<AppDbContext>>();
 builder.Services.AddScoped<IGenericRepository<PHCDbContext>, GenericRepository<PHCDbContext>>();

@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
 namespace MPesa.Internal
@@ -30,6 +31,7 @@ namespace MPesa.Internal
         public string SecurityCredential { get; set; }
         [JsonPropertyName("input_TransactionID")]
         public string TransactionId { get; set; }
+        public override string ToString() => JsonConvert.SerializeObject(this);
 
         private MpesaRequest() { }
 

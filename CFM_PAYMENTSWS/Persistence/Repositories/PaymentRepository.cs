@@ -10,6 +10,8 @@ using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using static System.Net.WebRequestMethods;
+using Microsoft.Data.SqlClient;
+using Z.EntityFramework.Plus;
 
 namespace CFM_PAYMENTSWS.Persistence.Repositories
 {
@@ -18,15 +20,80 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
         private readonly ConversionExtension conversionExtension = new ConversionExtension();
         private readonly TContext _context;
+        EncryptionHelper encryptionHelper = new EncryptionHelper();
 
         public PaymentRepository(TContext context)
         {
             _context = context;
         }
 
-        public List<PaymentsQueue> GetPagamentQueue(string estado)
+        public List<U2bPaymentsQueue> GetPagamentosEmFila(string estado, decimal canal)
         {
-            EncryptionHelper encryptionHelper = new EncryptionHelper();
+
+            var result = _context.Set<U2bPaymentsQueue>().
+                AsNoTracking().
+                Where(pq => pq.Estado == estado
+                    && pq.Canal == canal)
+                .ToList()
+                .Select(res => new U2bPaymentsQueue
+                {
+                    Canal = res.Canal,
+                    Destino = encryptionHelper.DecryptText(res.Destino, res.Keystamp),
+                    Valor = res.Valor,
+                    TransactionId = encryptionHelper.DecryptText(res.TransactionId, res.Keystamp),
+                    U2bPaymentsQueuestamp = res.U2bPaymentsQueuestamp,
+                    Lordem = res.Lordem
+                });
+
+
+            return result.ToList();
+        }
+
+
+        public void actualizarEstadoDoPagamento(U2bPaymentsQueue u2BPayments, ResponseDTO responseDTO)
+        {
+            if (responseDTO.response.cod != "0000")
+            {
+                var paymentStatus = _context.Set<U2bPayments>().Where(u2bpayments => u2bpayments.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
+              
+                if (paymentStatus.Estado != "SUCESSO")
+                {
+
+                    _context.Set<U2bPayments>().Where(u2bpayments =>
+                    u2bpayments.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp)
+                    .Update(x => new U2bPayments()
+                    {
+                        Processado = true,
+                        Estado = (responseDTO.response.cod == "0000" ? "SUCESSO" : "ERRO"),
+                        Descricao = (responseDTO.response.cod == "0000" ? "Sucesso" : "Erro ao processar pagamento")
+                    });
+
+                }
+
+                return;
+
+            }
+
+
+            Debug.Print("Update payment ");
+            var payment = _context.Set<U2bPayments>().Where(upayment => upayment.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
+            Debug.Print("Update payment2 ");
+            //var paymentQueue= _wSCTX.U2BPaymentsQueue.Where(u2BPayments => u2BPayments.u_2b_paymentsQueuestamp == u2BPayments.u_2b_paymentsQueuestamp).FirstOrDefault();
+
+            payment.Processado = true;
+            payment.Estado = "SUCESSO";
+            payment.Descricao = "Sucesso";
+
+
+            var paymentQueue = _context.Set<U2bPaymentsQueue>().Where(upayment => upayment.U2bPaymentsQueuestamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
+            Debug.Print($"Update payment2   {JsonConvert.SerializeObject(paymentQueue)}");
+
+            _context.Remove(paymentQueue);
+            _context.SaveChanges();
+        }
+
+        public List<PaymentsQueue> GetPagamentQueue(string estado, decimal canal)
+        {
 
 
             Debug.Print("Get Pagamento queue");
@@ -34,7 +101,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             {
 
                 var pagamentos = _context.Set<U2bPaymentsQueue>()
-                    .Where(payment => payment.Estado == estado)
+                    .Where(payment => payment.Estado == estado && payment.Canal == canal)
                     .GroupBy(payment => payment.BatchId)
                     .Select(group => new PaymentsQueue
                     {
@@ -66,11 +133,10 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
 
                 // Imprimir o JSON
-                Debug.Print("Estadosss");
                 string json = JsonConvert.SerializeObject(pagamentos, Formatting.Indented);
-                Debug.Print("JSON dos pagamentos no estado:\n" + estado + json);
+                //Debug.Print("JSON dos pagamentos no estado:\n" + estado + json);
 
-                Debug.Print("Imprimie todos pagamentos" + pagamentos.ToString());
+                //Debug.Print("Imprimie todos pagamentos" + pagamentos.ToString());
                 return pagamentos;
             }
             catch (Exception ex)
@@ -79,6 +145,13 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 Debug.Print($"EXCEPCAO TEST GROUP {ex.Message} INNER {ex.InnerException} STACK TRACE {ex.StackTrace}");
                 throw; // Re-lança a exceção para que a chamada do método possa lidar com ela, se necessário
             }
+        }
+
+        public U2bPayments GetPaymentByStamp(string u2bPaymentsStamp)
+        {
+            var payment = _context.Set<U2bPayments>()
+                .FirstOrDefault(upayment => upayment.U2bPaymentsstamp == u2bPaymentsStamp);
+            return payment;
         }
 
         private static string? GetAuxCamposBatchBooking(string tabela, int provider)
@@ -134,6 +207,19 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         .Where(upayment => upayment.Transactionid == transactionId && upayment.BatchId == batchId)
                         .FirstOrDefault();
         }
+
+
+        public List<int?> GetCanais_UPaymentQueue()
+        {
+
+            return _context.Set<U2bPayments>()
+                      .Select(u => new { u.Canal })
+                      .Distinct()
+                      .ToList()
+                      .Select(x => (x.Canal))
+                      .ToList();
+        }
+
 
         public List<U2bPayments> GetPaymentsBatchId(string batchId)
         {

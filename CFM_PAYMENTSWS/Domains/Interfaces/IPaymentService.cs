@@ -5,6 +5,7 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
     public interface IPaymentService
     {
         public Task<ResponseDTO> actualizarPagamentos(PaymentCheckedDTO paymentHeader);
+        public Task<RespostaDTO> ProcessarPagamentos(PaymentDetailsDTO paymentDetailsDTO);
         public bool VerificarJobActivos(string lockKey);
         public void TerminarJob(string lockKey);
 

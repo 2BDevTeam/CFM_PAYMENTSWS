@@ -29,6 +29,25 @@ namespace CFM_PAYMENTSWS.Controllers
         }
 
 
+
+        [HttpPost]
+        [Route("EnviarPagamento")]
+        public async Task<ActionResult<RespostaDTO>> ProcessarPagamentos(
+            [FromBody] PaymentDetailsDTO paymentDetailsDTOs)
+        {
+
+            //paymentDetailsDTOs.Destino = "171717";
+            paymentDetailsDTOs.Canal = 101;
+            var response = await _paymentService.ProcessarPagamentos(paymentDetailsDTOs);
+
+            if (response.Codigo != "0000")
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
+
     }
 }
 

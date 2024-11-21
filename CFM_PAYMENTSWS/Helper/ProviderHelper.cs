@@ -29,7 +29,29 @@ namespace CFM_PAYMENTSWS.Helper
             using (AppDbContext context = new AppDbContext(optionsBuilder.Options))
             {
 
-                return context.UProvider.Where(provider => provider.codigo == providerCode &&provider.grupo==grupo).ToList();
+                return context.UProvider.Where(provider => provider.codigo == providerCode && provider.grupo==grupo).ToList();
+            }
+        }
+
+        public List<UProvider> getProviderDataPHC(decimal providerCode)
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<PHCDbContext>();
+            var configuration = new ConfigurationBuilder()
+           .SetBasePath(Directory.GetCurrentDirectory())
+           .AddJsonFile($"appsettings.json");
+
+
+
+            var config = configuration.Build();
+            var connString = config.GetConnectionString("ConnStrE14");
+            optionsBuilder.UseSqlServer(connString);
+
+
+
+            using (PHCDbContext context = new PHCDbContext(optionsBuilder.Options))
+            {
+
+                return context.UProvider.Where(provider => provider.codigo == providerCode).ToList();
             }
         }
 

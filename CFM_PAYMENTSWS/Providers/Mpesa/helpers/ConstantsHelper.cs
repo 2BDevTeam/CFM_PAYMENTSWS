@@ -15,5 +15,7 @@
         public const string PATH_QUERY = "queryTransactionStatus/";
         public const string PATH_REVERSAL = "reversal/";
         public const string PATH_CUSTOMER_NAME = "queryCustomerName/";
+
+        //https://api.vm.co.mz:18345/ipg/v1x
     }
 }

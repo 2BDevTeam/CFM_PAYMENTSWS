@@ -7,6 +7,7 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
     public interface IPHCRepository<TContext> where TContext : DbContext
     {
 
+        public List<UProvider> GetUProvider(decimal code);
         public JobLocks GetJobLocks(string jobId);
         public Po GetPo(string postamp);
         public Pd GetPd(string pdstamp);

@@ -28,6 +28,11 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         public virtual DbSet<Ow> Ow { get; set; } = null!;
         public virtual DbSet<Pr> Pr { get; set; } = null!;
         public virtual DbSet<Tb> Tb { get; set; } = null!;
+        public virtual DbSet<UProvider> UProvider { get; set; } = null!;
+
+
+
+        public virtual DbSet<U2bPayments> U2bPayments { get; set; } = null!;
 
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -73,6 +78,186 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
             }
             */
             modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
+
+
+            modelBuilder.Entity<U2bPayments>(entity =>
+            {
+                entity.HasKey(e => e.U2bPaymentsstamp)
+                    .HasName("PK__u_2b_Pay__95E0972B6D99F5AF");
+
+                entity.ToTable("u_2b_Payments");
+
+                entity.Property(e => e.U2bPaymentsstamp)
+                    .HasMaxLength(25)
+                    .IsUnicode(false)
+                    .HasColumnName("u_2b_paymentsstamp");
+
+                entity.Property(e => e.BankReference)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("bankReference")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.BatchId)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Canal)
+                    .HasColumnName("canal")
+                    .HasDefaultValueSql("((0))");
+
+                entity.Property(e => e.Checked).HasColumnName("checked");
+
+                entity.Property(e => e.Dataprocessado)
+                    .HasColumnType("datetime")
+                    .HasColumnName("dataprocessado")
+                    .HasDefaultValueSql("('1900-01-01')");
+
+                entity.Property(e => e.Descricao)
+                    .HasMaxLength(200)
+                    .IsUnicode(false)
+                    .HasColumnName("descricao")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Destino)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("destino")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Docno)
+                    .IsUnicode(false)
+                    .HasColumnName("docno");
+
+                entity.Property(e => e.Emailf)
+                    .HasColumnType("text")
+                    .HasColumnName("emailf")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Estado)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("estado")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Horaprocessado)
+                    .HasMaxLength(10)
+                    .IsUnicode(false)
+                    .HasColumnName("horaprocessado")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Keystamp)
+                    .IsUnicode(false)
+                    .HasColumnName("keystamp");
+
+                entity.Property(e => e.Lancadonatesouraria)
+                    .HasColumnName("lancadonatesouraria")
+                    .HasDefaultValueSql("((0))");
+
+                entity.Property(e => e.Lordem)
+                    .ValueGeneratedOnAdd()
+                    .HasColumnName("lordem");
+
+                entity.Property(e => e.Marcada).HasColumnName("marcada");
+
+                entity.Property(e => e.Moeda)
+                    .HasMaxLength(20)
+                    .IsUnicode(false)
+                    .HasColumnName("moeda")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Tipo)
+                    .IsUnicode(false)
+                    .HasColumnName("tipo");
+
+                entity.Property(e => e.Origem)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("origem")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Oristamp)
+                    .IsUnicode(false)
+                    .HasColumnName("oristamp")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Ousrdata)
+                    .HasColumnType("date")
+                    .HasColumnName("ousrdata")
+                    .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.Ousrhora)
+                    .HasMaxLength(10)
+                    .IsUnicode(false)
+                    .HasColumnName("ousrhora")
+                    .HasDefaultValueSql("(left(CONVERT([time],getdate()),(8)))");
+
+                entity.Property(e => e.Ousrinis)
+                    .HasMaxLength(5)
+                    .IsUnicode(false)
+                    .HasColumnName("ousrinis")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.ProcessingDateHs)
+                    .HasColumnType("datetime")
+                    .HasColumnName("processingDateHs")
+                    .HasDefaultValueSql("('19000101')");
+
+                entity.Property(e => e.StatusCodeHs)
+                    .HasMaxLength(30)
+                    .IsUnicode(false)
+                    .HasColumnName("statusCodeHs")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.StatusDescriptionHs)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("statusDescriptionHs")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Tabela)
+                    .IsUnicode(false)
+                    .HasColumnName("tabela")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Transactionid)
+                    .IsUnicode(false)
+                    .HasColumnName("transactionid");
+
+                entity.Property(e => e.Usrdata)
+                    .HasColumnType("datetime")
+                    .HasColumnName("usrdata")
+                    .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.Usrhora)
+                    .HasMaxLength(8)
+                    .IsUnicode(false)
+                    .HasColumnName("usrhora")
+                    .HasDefaultValueSql("(left(CONVERT([time],getdate()),(8)))");
+
+                entity.Property(e => e.Usrinis)
+                    .HasMaxLength(30)
+                    .IsUnicode(false)
+                    .HasColumnName("usrinis")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Valor)
+                    .HasColumnType("decimal(16, 2)")
+                    .HasColumnName("valor");
+            });
+
+
+            modelBuilder.Entity<UProvider>(entity =>
+            {
+                entity.HasKey(e => e.u_providerstamp);
+                entity.ToTable("u_provider");
+                entity.Property(e => e.u_providerstamp).HasColumnName("u_providerstamp");
+                entity.Property(e => e.chave);
+                entity.Property(e => e.grupo);
+                entity.Property(e => e.codigo);
+                entity.Property(e => e.valor);
+            });
 
             modelBuilder.Entity<Tb>(entity =>
             {

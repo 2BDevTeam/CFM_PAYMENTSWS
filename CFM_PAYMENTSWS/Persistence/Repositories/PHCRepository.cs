@@ -13,6 +13,7 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using CFM_PAYMENTSWS.Helper;
 using System.Globalization;
 using Microsoft.Data.SqlClient;
+using CFM_PAYMENTSWS.Persistence.Contexts;
 
 namespace CFM_PAYMENTSWS.Persistence.Repositories
 {
@@ -28,6 +29,12 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             _context = context;
         }
 
+        public List<UProvider> GetUProvider(decimal code)
+        {
+            return _context.Set<UProvider>().
+                Where(ft => ft.codigo == code)
+                .ToList();
+        }
 
         public JobLocks GetJobLocks(string jobId)
         {
@@ -51,9 +58,9 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         public Ol GetOl(string olstamp)
         {
             return _context.Set<Ol>().
-                FirstOrDefault(po => po.Olstamp== olstamp);
+                FirstOrDefault(po => po.Olstamp == olstamp);
         }
-        
+
         public Ow GetOw(string owstamp)
         {
             return _context.Set<Ow>().
@@ -78,7 +85,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                     Corpo = encryptionHelper.DecryptText(po.Corpo, po.Keystamp),
                     Processado = po.Processado,
                     Ousrdata = po.Ousrdata,
-                    Keystamp=po.Keystamp
+                    Keystamp = po.Keystamp
                 })
                 .Where(po => po.Processado == processado)
                 .ToList();
@@ -99,7 +106,6 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         )
                 .FirstOrDefault();
         }
-
 
 
         /*

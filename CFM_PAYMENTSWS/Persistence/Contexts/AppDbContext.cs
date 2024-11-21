@@ -162,7 +162,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
             });
             modelBuilder.Entity<UProvider>(entity =>
             {
-
                 entity.HasKey(e => e.u_providerstamp);
                 entity.ToTable("u_provider");
                 entity.Property(e => e.u_providerstamp).HasColumnName("u_providerstamp");
@@ -170,8 +169,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                 entity.Property(e => e.grupo);
                 entity.Property(e => e.codigo);
                 entity.Property(e => e.valor);
-
-
             });
 
             modelBuilder.Entity<E4>(entity =>
@@ -283,9 +280,9 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("moeda")
                     .HasDefaultValueSql("('')");
 
-                entity.Property(e => e.MpesaTransactionid)
+                entity.Property(e => e.Tipo)
                     .IsUnicode(false)
-                    .HasColumnName("mpesa_transactionid");
+                    .HasColumnName("tipo");
 
                 entity.Property(e => e.Origem)
                     .HasMaxLength(100)
