@@ -22,7 +22,7 @@ namespace CFM_PAYMENTSWS.Controllers
 
         [HttpPost]
         [Route("UpdatePayments")]
-        public async Task<ActionResult<ResponseDTO>> GetGLTransactions(PaymentCheckedDTO pagamentos)
+        public async Task<ActionResult<ResponseDTO>> UpdatePayments(PaymentCheckedDTO pagamentos)
         {
             var response = await _paymentService.actualizarPagamentos(pagamentos);
             return Ok(response);
@@ -49,5 +49,38 @@ namespace CFM_PAYMENTSWS.Controllers
         }
 
     }
+
+
+    //CFM_PAYMENTSWS V1 documentado a partir da Descrição técnica V1.61
+    [Route("api/payment/v1")]
+    [ApiController]
+    public class CFM_PAYMENTSWSV1Controller : ControllerBase
+    {
+        IPaymentService _paymentService;
+
+        public CFM_PAYMENTSWSV1Controller(IPaymentService paymentService)
+        {
+            _paymentService = paymentService;
+        }
+
+
+        [HttpPost]
+        [Route("updatePayments")]
+        public async Task<ActionResult<ResponseSmallDTO>> UpdatePayments(PaymentCheckedDTO pagamentos)
+        {
+            var response = await _paymentService.actualizarPagamentos(pagamentos);
+
+            ResponseSmallDTO responseSmallDTO = new()
+            {
+                code = response.response.cod,
+                description = response.response.codDesc
+            };
+
+            return Ok(responseSmallDTO);
+        }
+
+    }
+
+
 }
 

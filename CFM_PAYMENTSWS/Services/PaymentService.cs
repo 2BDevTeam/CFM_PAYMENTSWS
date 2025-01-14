@@ -20,11 +20,14 @@ using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
 using System.Threading.Tasks.Dataflow;
 using MPesa;
 using CFM_PAYMENTSWS.Providers.Mpesa;
+using CFM_PAYMENTSWS.Providers.BCI.Repository;
+using CFM_PAYMENTSWS.Providers.BCI.DTOs;
 
 namespace CFM_PAYMENTSWS.Services
 {
     public class PaymentService : IPaymentService
     {
+        private readonly APIHelper apiHelper = new APIHelper();
         private readonly LogHelper logHelper = new LogHelper();
         private readonly ProviderHelper providerHelper = new ProviderHelper();
         private readonly RouteMapper routeMapper = new RouteMapper();
@@ -115,6 +118,11 @@ namespace CFM_PAYMENTSWS.Services
                         case 105:
                             pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 105);
                             NedBankProcessing(pagamentos);
+                            break;
+
+                        case 106:
+                            pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 106);
+                            BCIProcessing(pagamentos);
                             break;
 
                         default:
@@ -249,6 +257,57 @@ namespace CFM_PAYMENTSWS.Services
             return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
         }
 
+
+        void BCIProcessing(List<PaymentsQueue> pagamentos)
+        {
+
+            foreach (var pagamento in pagamentos)
+            {
+
+                BCIAPI bciRepository = new BCIAPI();
+
+                PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase(pagamento.payment);
+                BCIResponseDTO bciResponseDTO = bciRepository.loadPayments(paymentCamel);
+
+                ResponseDTO bciResponse = routeMapper.mapLoadPaymentResponse(106, bciResponseDTO);
+
+                Debug.Print("Resposta do Load");
+                Debug.Print(bciResponse.ToString());
+
+                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, bciResponse.response.cod, bciResponse.response.codDesc, "", "");
+
+                /*
+                switch (bciResponse.response.cod)
+                {
+                    case "0011":
+                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", bciResponse.response.codDesc);
+                        Debug.Print("Teste Por Corrigir" + bciResponse.response.codDesc);
+                        break;
+
+                    case "0000":
+                        actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
+                        Debug.Print("Teste Por processar" + bciResponse.response.codDesc);
+                        break;
+
+                    case "0010":
+                        break;
+
+                    case "0007":
+                        Debug.Print("Teste HS2" + bciResponse.response.codDesc);
+                        break;
+
+                    default:
+                        Debug.Print("Teste HS3" + bciResponse.response.codDesc);
+                        break;
+
+                }
+                */
+                logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+
+            }
+
+        }
+
         void NedBankProcessing(List<PaymentsQueue> pagamentos)
         {
 
@@ -318,9 +377,9 @@ namespace CFM_PAYMENTSWS.Services
                             Debug.Print($"RESPOSTA DO PAGAMENTO 00077 {response.ToString()}");
                             logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
                             _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+                            actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
 
                             break;
-
 
 
                         case "0000":
@@ -328,6 +387,7 @@ namespace CFM_PAYMENTSWS.Services
                             response = new ResponseDTO(new ResponseCodesDTO("0000", "Success"), estadoDoPagamento.Data, pagamento.ToString());
                             logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
                             _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
+                            actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
 
                             break;
 
@@ -337,7 +397,8 @@ namespace CFM_PAYMENTSWS.Services
                             Debug.Print($"RESPOSTA DO PAGAMENTO 0002 {response.ToString()}");
                             logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
                             _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
-                            
+                            actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
+
                             break;
 
                     }
@@ -359,6 +420,7 @@ namespace CFM_PAYMENTSWS.Services
 
 
         }
+
 
 
         public async Task<RespostaDTO> ProcessarPagamentos(PaymentDetailsDTO pagamento)
@@ -464,7 +526,6 @@ namespace CFM_PAYMENTSWS.Services
             }
         }
 
-
         public void actualizarEstadoDoPagamentoByTransactionId(string estado, string descricao, PaymentCheckedDTO paymentHeader, PaymentCheckedRecordsDTO pagamento)
         {
 
@@ -481,8 +542,9 @@ namespace CFM_PAYMENTSWS.Services
                                      .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.TransactionId, u2BPaymentsQueue.Keystamp) == pagamento.TransactionId)
                                      .FirstOrDefault();
 
+            /*
             var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Oristamp);
-
+            */
 
 
             Debug.Print("Prontos para actualziar");
@@ -496,6 +558,7 @@ namespace CFM_PAYMENTSWS.Services
                 payment.BankReference = pagamento.BankReference;
             }
 
+            /*
             if (wspayment != null)
             {
                 wspayment.Dataprocessado = DateTime.Now;
@@ -504,7 +567,8 @@ namespace CFM_PAYMENTSWS.Services
                 wspayment.Usrdata = DateTime.Now;
                 wspayment.Bankreference = pagamento.BankReference;
             }
-
+            */
+            /*
             if (paymentQueue != null)
             {
                 _genericPaymentRepository.Delete(paymentQueue);
@@ -542,12 +606,98 @@ namespace CFM_PAYMENTSWS.Services
 
                     break;
                 case "TB":
-                    /*
-                    var tb = _phcRepository.GetOw(paymentQueue.Oristamp);
+                    var tb = _phcRepository.GetTb(paymentQueue.Oristamp);
 
-                    tb.Dvalor = paymentHeader.ProcessingDate;
-                    tb.Cheque = pagamento.BankReference;
-                    */
+                    //tb.Dvalor = paymentHeader.ProcessingDate;
+                    //tb.Cheque = pagamento.BankReference;
+
+                    break;
+                default:
+                    break;
+
+            }
+            */
+
+            /*
+            var trfb = _phcRepository.GetUTrfb(paymentQueue.BatchId);
+            if (trfb != null)
+            {
+                trfb.Rdata = paymentHeader.ProcessingDate;
+            }
+            */
+            _genericPaymentRepository.SaveChanges();
+            _genericPHCRepository.SaveChanges();
+
+        }
+
+        public void actualizarEstadoDoPagamentoByTransactionId(string estado, string descricao, U2bPaymentsQueue paymentQueue)
+        {
+
+            EncryptionHelper encryptionHelper = new EncryptionHelper();
+
+            Debug.Print("Entrou na actualizacao por ID");
+            var payment = _paymentRespository.GetPaymentByStamp(paymentQueue.U2bPaymentsQueuestamp);
+
+            //var decryptTran = encryptionHelper.DecryptText(connString, u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp, u2BPaymentsQueue.BatchId);
+
+
+            var wspayment = _phcRepository.GetWspaymentsByStamp(paymentQueue.U2bPaymentsQueuestamp);
+
+
+            Debug.Print("Prontos para actualziar");
+            Debug.Print($"Payment Queue {JsonConvert.SerializeObject(paymentQueue)}");
+            if (payment != null)
+            {
+                payment.Dataprocessado = DateTime.Now;
+                payment.Estado = estado;
+                payment.Descricao = descricao;
+                payment.Usrdata = DateTime.Now;
+                //payment.BankReference = pagamento.BankReference;
+            }
+
+            if (wspayment != null)
+            {
+                wspayment.Dataprocessado = DateTime.Now;
+                wspayment.Estado = estado;
+                wspayment.Descricao = descricao;
+                wspayment.Usrdata = DateTime.Now;
+                //wspayment.Bankreference = pagamento.BankReference;
+            }
+
+
+            switch (payment.Tabela)
+            {
+                case "PO":
+                    var po = _phcRepository.GetPo(paymentQueue.Oristamp);
+
+                    po.Process = true;
+                    //po.URefbanco = pagamento.BankReference;
+                    //po.Tbcheque = pagamento.BankReference;
+                    po.Dvalor = paymentQueue.ProcessingDate.Value;
+
+                    break;
+
+                case "PD":
+                    var pd = _phcRepository.GetPd(paymentQueue.Oristamp);
+
+                    //pd.URefbanco = pagamento.BankReference;
+                    //pd.Cheque = pagamento.BankReference.ToString();
+                    pd.Rdata = paymentQueue.ProcessingDate.Value;
+
+                    break;
+
+                case "OW":
+                    var ol = _phcRepository.GetOw(paymentQueue.Oristamp);
+
+                    //ol.Cheque = pagamento.BankReference;
+                    ol.Dvalor = paymentQueue.ProcessingDate.Value;
+
+                    break;
+                case "TB":
+                    var tb = _phcRepository.GetTb(paymentQueue.Oristamp);
+
+                    //tb.Dvalor = paymentHeader.ProcessingDate;
+                    //tb.Cheque = pagamento.BankReference;
 
                     break;
                 default:
@@ -558,7 +708,7 @@ namespace CFM_PAYMENTSWS.Services
             var trfb = _phcRepository.GetUTrfb(paymentQueue.BatchId);
             if (trfb != null)
             {
-                trfb.Rdata = paymentHeader.ProcessingDate;
+                trfb.Rdata = paymentQueue.ProcessingDate.Value;
             }
 
             _genericPaymentRepository.SaveChanges();

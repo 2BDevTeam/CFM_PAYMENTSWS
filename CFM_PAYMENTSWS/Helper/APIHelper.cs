@@ -1,10 +1,35 @@
-﻿using CFM_PAYMENTSWS.DTOs;
+﻿using CFM_PAYMENTSWS.Domains.Models;
+using CFM_PAYMENTSWS.DTOs;
 
 namespace CFM_PAYMENTSWS.Helper
 {
     public class APIHelper
     {
 
+        public PaymentCamelCase ConvertPaymentToCamelCase(Payment payment)
+        {
+            if (payment == null) throw new ArgumentNullException(nameof(payment));
+
+            return new PaymentCamelCase
+            {
+                BatchId = payment.BatchId,
+                Description = payment.Description,
+                ProcessingDate = payment.ProcessingDate,
+                DebitAccount = payment.DebitAccount,
+                initgPtyCode = payment.initgPtyCode,
+                BatchBooking = payment.BatchBooking,
+                PaymentRecords = payment.PaymentRecords?.Select(pr => new PaymentRecordsCamelCase
+                {
+                    TransactionId = pr.TransactionId,
+                    CreditAccount = pr.CreditAccount,
+                    BeneficiaryName = pr.BeneficiaryName,
+                    TransactionDescription = pr.TransactionDescription,
+                    Currency = pr.Currency,
+                    Amount = pr.Amount,
+                    BeneficiaryEmail = pr.BeneficiaryEmail
+                }).ToList()
+            };
+        }
 
 
         public API getApiEntity(string entity,string operationCode)

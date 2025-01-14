@@ -55,7 +55,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             if (responseDTO.response.cod != "0000")
             {
                 var paymentStatus = _context.Set<U2bPayments>().Where(u2bpayments => u2bpayments.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
-              
+
                 if (paymentStatus.Estado != "SUCESSO")
                 {
 
@@ -76,14 +76,14 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
 
             Debug.Print("Update payment ");
-            var payment = _context.Set<U2bPayments>().Where(upayment => upayment.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
-            Debug.Print("Update payment2 ");
-            //var paymentQueue= _wSCTX.U2BPaymentsQueue.Where(u2BPayments => u2BPayments.u_2b_paymentsQueuestamp == u2BPayments.u_2b_paymentsQueuestamp).FirstOrDefault();
+            //var payment = _context.Set<U2bPayments>().Where(upayment => upayment.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
+
+            var payment = GetPaymentByStamp(u2BPayments.U2bPaymentsQueuestamp);
+            Debug.Print($"Update payment2   {JsonConvert.SerializeObject(payment)}");
 
             payment.Processado = true;
             payment.Estado = "SUCESSO";
             payment.Descricao = "Sucesso";
-
 
             var paymentQueue = _context.Set<U2bPaymentsQueue>().Where(upayment => upayment.U2bPaymentsQueuestamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
             Debug.Print($"Update payment2   {JsonConvert.SerializeObject(paymentQueue)}");
@@ -109,11 +109,11 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         payment = new Payment
                         {
 
-                            BatchId = group.Key,
+                            BatchId = group.Key.Trim(),
                             Description = group.First().Description,
                             ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
                             DebitAccount = group.First().Origem,
-                            initgPty_Code = GetAuxCamposEntityCode(group.First().Canal),
+                            initgPtyCode = GetAuxCamposEntityCode(group.First().Canal),
                             BatchBooking = GetAuxCamposBatchBooking(group.First().Tabela, group.First().Canal),
                             PaymentRecords = group.Select(paymentRecord => new PaymentRecords
                             {
@@ -156,29 +156,22 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
         private static string? GetAuxCamposBatchBooking(string tabela, int provider)
         {
-            var validProviders = new List<int> { 106 };
-
-            if (validProviders.Contains(provider))
+            return provider == 106 ? tabela switch
             {
-                if (tabela == "TB")
-                    return "Salários";
-                else
-                    return "Fornecedores";
-            }
-
-            return null;
+                "TB" => "Salários",
+                _ => "Fornecedores"
+            } : null;
         }
 
         private static string? GetAuxCamposEntityCode(int provider)
         {
-            var validProviders = new List<int> { 106 };
-
-            if (validProviders.Contains(provider))
+            return provider switch
             {
-                return "CFM";
-            }
+                106 => "3a45f122-4d6c-430e-ac6a-90079cb3831d",
+                //107 => "8b65a711-4f9d-423f-bb7a-1e39cb9c345d",
+                _ => null
+            };
 
-            return null;
         }
 
         public List<UProvider> getProviderData(decimal providerCode)

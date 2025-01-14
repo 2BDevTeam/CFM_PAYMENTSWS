@@ -1,6 +1,7 @@
 ﻿using MPesa;
 using CFM_PAYMENTSWS.DTOs;
 using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
+using CFM_PAYMENTSWS.Providers.BCI.DTOs;
 
 namespace CFM_PAYMENTSWS.Mappers
 {
@@ -20,6 +21,11 @@ namespace CFM_PAYMENTSWS.Mappers
                     var nedBankMapper = new NedbankMapper();
                     NedbankResponseDTO  nedbankResponse= (NedbankResponseDTO)response;
                     return nedBankMapper.mapNedbankLoadPayments(nedbankResponse);
+
+                case 106:
+                    var bciMapper = new BCIMapper();
+                    BCIResponseDTO bciResponse = (BCIResponseDTO)response;
+                    return bciMapper.mapBCILoadPayments(bciResponse);
 
                 default:
                      throw new Exception("INVALID_PROVIDER_CODE_ON_MAP_PROVIDER_RESPONSE");

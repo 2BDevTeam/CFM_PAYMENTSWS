@@ -67,6 +67,12 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 FirstOrDefault(po => po.Owstamp == owstamp);
         }
 
+        public Tb GetTb(string tbstamp)
+        {
+            return _context.Set<Tb>().
+                FirstOrDefault(po => po.Tbstamp == tbstamp);
+        }
+
         public UTrfb GetUTrfb(string trfbstamp)
         {
             return _context.Set<UTrfb>().
@@ -107,6 +113,13 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 .FirstOrDefault();
         }
 
+
+        public UWspayments GetWspaymentsByStamp(string stamp)
+        {
+            return _context.Set<UWspayments>()
+                .Where(po => po.UWspaymentsstamp == stamp)
+                .FirstOrDefault();
+        }
 
         /*
         public Ft2 GetFt2(string ft2stamp)
