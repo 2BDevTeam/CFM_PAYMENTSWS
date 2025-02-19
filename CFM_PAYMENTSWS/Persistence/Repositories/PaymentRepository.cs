@@ -169,7 +169,8 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         {
             return provider switch
             {
-                106 => "3a45f122-4d6c-430e-ac6a-90079cb3831d",
+                //106 => "3a45f122-4d6c-430e-ac6a-90079cb3831d",
+                106 => "84d193aa-a6fc-4ada-b367-6b94449f3502",
                 107 => "CFM",
                 _ => null
             };
