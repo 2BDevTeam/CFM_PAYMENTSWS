@@ -34,6 +34,9 @@ namespace CFM_PAYMENTSWS.Controllers
         public async Task<IActionResult> Login([FromBody] LoginModel model)
 
         {
+            var ipOrigem = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            Debug.Print($"ipOrigemipOrigem {ipOrigem}");
             /* return Ok(new
              {
                  token = "",

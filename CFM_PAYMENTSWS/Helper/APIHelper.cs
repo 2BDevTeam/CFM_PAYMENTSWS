@@ -14,7 +14,7 @@ namespace CFM_PAYMENTSWS.Helper
             {
                 BatchId = payment.BatchId,
                 Description = payment.Description,
-                ProcessingDate = payment.ProcessingDate,
+                ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-dd"),
                 DebitAccount = payment.DebitAccount,
                 initgPtyCode = payment.initgPtyCode,
                 BatchBooking = payment.BatchBooking,
@@ -27,6 +27,31 @@ namespace CFM_PAYMENTSWS.Helper
                     Currency = pr.Currency,
                     Amount = pr.Amount,
                     BeneficiaryEmail = pr.BeneficiaryEmail
+                }).ToList()
+            };
+        }
+
+        public Paymentv1_5 ConvertPaymentToV1_5(Payment payment)
+        {
+            if (payment == null) throw new ArgumentNullException(nameof(payment));
+
+            return new Paymentv1_5
+            {
+                BatchId = payment.BatchId,
+                Description = payment.Description,
+                ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-ddThh:mm:ss"),
+                DebitAccount = payment.DebitAccount,
+                initgPty_Code = payment.initgPtyCode,
+                BatchBooking = 0,
+                PaymentRecords = payment.PaymentRecords?.Select(pr => new PaymentRecords
+                {
+                    TransactionId = pr.TransactionId,
+                    CreditAccount = pr.CreditAccount,
+                    BeneficiaryName = pr.BeneficiaryName,
+                    TransactionDescription = pr.TransactionDescription,
+                    Currency = pr.Currency,
+                    Amount = pr.Amount,
+                    BeneficiaryEmail = null
                 }).ToList()
             };
         }

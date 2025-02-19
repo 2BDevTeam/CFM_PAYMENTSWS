@@ -22,7 +22,14 @@ namespace CFM_PAYMENTSWS.Jobs
                () => paymentService.ProcessarPagamentosAsync(),
               Cron.Minutely()
               );
-            
+
+            /*
+            RecurringJob.AddOrUpdate(
+              "verificarPagamentos",
+              () => paymentService.VerificarPagamentos(),
+             Cron.Minutely()
+             );
+            */
         }
 
     }

@@ -8,23 +8,127 @@ using System.Diagnostics;
 using System.Net;
 using System.Text.Json.Nodes;
 using Newtonsoft.Json.Linq;
+using CFM_PAYMENTSWS.Providers.Bim.DTOs;
+using CFM_PAYMENTSWS.DTOs;
+using CFM_PAYMENTSWS.Extensions;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.IdentityModel.Logging;
 
-namespace CFM_PAYMENTSWS.Providers.BCI.Repository
+namespace CFM_PAYMENTSWS.Providers.Bim.Repository
 {
 
 
-    public class BCIAPI
+    public class BimAPI
     {
         private readonly HttpHelper httpHelper = new HttpHelper();
+        private readonly APIHelper apiHelper = new APIHelper();
 
-        public BCIResponseDTO loadPayments(PaymentCamelCase payment)
+
+
+
+        public async Task<string> Authenticate()
+        {
+            Debug.Print("BimAPI.Auth");
+
+            API apiData;
+            var result = "";
+            var requestId = KeysExtension.generateRequestId();
+            var data = new object();
+
+            try
+            {
+
+                apiData = apiHelper.getApiEntity("Bim", "AUTH");
+
+                if (apiData?.status == null || apiData?.status == "0")
+                {
+                    ResponseDTO response = new ResponseDTO(new ResponseCodesDTO("I-500", apiData.message), null, null);
+                    //logHelper.generateLogJB(response, requestId, "BimAPI.authenticate");
+
+                    return "UNAUTHORIZED";
+                }
+
+                var endpoint = apiData.endpoints.Where(endpoint => endpoint.operationCode == "login").FirstOrDefault();
+
+                Debug.Print("   " + endpoint.ToString());
+
+                var httpWebRequest = httpHelper.GetHttpWebRequestByEntityAndRoute("Bim", "login");
+
+                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                {
+
+                    data = new
+                    {
+                        scope = endpoint.credentials.username.ToString().Trim(),
+                        password = endpoint.credentials.password.ToString().Trim(),
+
+                    };
+
+                    string json = await Task.Run(() => JsonConvert.SerializeObject(data));
+
+                    Debug.Print("json AUTHHH data " + json);
+
+                    streamWriter.Write(json);
+                    streamWriter.Flush();
+                    streamWriter.Close();
+                }
+
+                var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+
+                {
+                    StreamReader streamReader = new StreamReader(httpResponse.GetResponseStream());
+                    result = streamReader.ReadToEnd();
+                    var statuscode = httpResponse.StatusCode.ToString();
+                    using (streamReader = new StreamReader(httpResponse.GetResponseStream())) ;
+
+                    BimAuthResponse bimAuthResponse = JsonConvert.DeserializeObject<BimAuthResponse>(result);
+                    Debug.WriteLine("Resultado Auth Token " + bimAuthResponse.token);
+
+                    return bimAuthResponse.token;
+
+                }
+            }
+            catch (WebException ex)
+            {
+                HttpWebResponse response;
+
+
+                if (ex?.Response?.GetResponseStream() == null)
+                {
+                    ResponseDTO responseex = new ResponseDTO(new ResponseCodesDTO("I-500", "GetResponseStreamSemResposta"), null, JsonConvert.SerializeObject(data));
+
+                    //logHelper.generateLogJB(responseex, requestId, "BCXAPI.authenticate");
+
+                    return "UNAUTHORIZED";
+                }
+
+                StreamReader reader = new StreamReader(ex.Response.GetResponseStream());
+
+                string rawresp = reader.ReadToEnd();
+
+                ResponseDTO responseex2 = new ResponseDTO(new ResponseCodesDTO("I-500", rawresp.ToString()), null, null);
+
+                //logHelper.generateLogJB(responseex2, requestId, "BCXAPI.authenticate");
+
+                return "UNAUTHORIZED";
+            }
+
+        }
+
+
+        public async Task<BimResponseDTO> loadPayments(Paymentv1_5 payment)
         {
 
             try
             {
+                string authResult = await Authenticate();
+
+                var httpWebRequest = httpHelper.GetHttpWebRequestByEntityAndRoute("Bim", "loadpayments");
+
                 string result = "";
 
-                HttpWebRequest httpWebRequest = httpHelper.getHttpWebRequestByProvider(106, "loadPayments", "");
+                httpWebRequest.Headers.Add("Authorization", $"Bearer {authResult}");
+                httpWebRequest.Headers.Add("Scope", "CFM");
 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
@@ -50,7 +154,7 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
 
                 result = streamReader.ReadToEnd();
 
-                BCIResponseDTO response = JsonConvert.DeserializeObject<BCIResponseDTO>(result);
+                BimResponseDTO response = JsonConvert.DeserializeObject<BimResponseDTO>(result);
 
                 Debug.Print("Dto deserealizado" + JsonConvert.SerializeObject(response));
                 if (response == null)
@@ -74,25 +178,25 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
                     Debug.Print("A solicitação web retornou o código de erro: " + statusCode);
                 }
 
-                return new BCIResponseDTO(payment.BatchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
+                return new BimResponseDTO(payment.BatchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
 
             }
             catch (Exception ex)
             {
-                return new BCIResponseDTO(payment.BatchId, ex.ToString(), "0007", "Internal Error");
+                return new BimResponseDTO(payment.BatchId, ex.ToString(), "0007", "Internal Error");
                 // return getGeneralExceptionResponse(ex, consumidores, "ForUTechRepository.inserirConsumidores");
             }
         }
 
 
-        public BCIResponseDTO checkPayments(string batchId, string initgPtyCode)
+        public BimResponseDTO checkPayments(string batchId, string initgPtyCode)
         {
 
             try
             {
                 string result = "";
 
-                HttpWebRequest httpWebRequest = httpHelper.getHttpWebRequestByProvider(106, "loadPayments", $"/{batchId}?initgPtyCode={initgPtyCode}");
+                HttpWebRequest httpWebRequest = httpHelper.getHttpWebRequestByProvider(107, "loadPayments", $"/{batchId}?initgPtyCode={initgPtyCode}");
 
                 var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
 
@@ -100,7 +204,7 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
 
                 result = streamReader.ReadToEnd();
 
-                BCIResponseDTO response = JsonConvert.DeserializeObject<BCIResponseDTO>(result);
+                BimResponseDTO response = JsonConvert.DeserializeObject<BimResponseDTO>(result);
 
                 Debug.Print("Dto deserealizado" + JsonConvert.SerializeObject(response));
                 if (response == null)
@@ -124,17 +228,17 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
                     Debug.Print("A solicitação web retornou o código de erro: " + statusCode);
                 }
 
-                return new BCIResponseDTO(batchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
+                return new BimResponseDTO(batchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
 
             }
             catch (Exception ex)
             {
-                return new BCIResponseDTO(batchId, ex.ToString(), "0007", "Internal Error");
+                return new BimResponseDTO(batchId, ex.ToString(), "0007", "Internal Error");
                 // return getGeneralExceptionResponse(ex, consumidores, "ForUTechRepository.inserirConsumidores");
             }
         }
 
-
+        /*
         public BCICheckPaymentReportResponseDTO validatePayments(string batchId)
         {
 
@@ -202,6 +306,7 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
                 // return getGeneralExceptionResponse(ex, consumidores, "ForUTechRepository.inserirConsumidores");
             }
         }
+        */
 
         public void RemoveNullProperties(JToken token)
         {
@@ -233,6 +338,5 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
                 }
             }
         }
-
     }
 }

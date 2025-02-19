@@ -123,7 +123,9 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                                 BeneficiaryName = encryptionHelper.DecryptText(paymentRecord.BeneficiaryName, paymentRecord.Keystamp),
                                 TransactionId = encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp),
                                 CreditAccount = encryptionHelper.DecryptText(paymentRecord.Destino, paymentRecord.Keystamp),
-                                BeneficiaryEmail = encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp) ?? ""
+                                BeneficiaryEmail = string.IsNullOrEmpty(encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp))
+                                                        ? "N/A"
+                                                        : encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp)
 
                             }).ToList()
                         }
@@ -168,11 +170,11 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             return provider switch
             {
                 106 => "3a45f122-4d6c-430e-ac6a-90079cb3831d",
-                //107 => "8b65a711-4f9d-423f-bb7a-1e39cb9c345d",
+                107 => "CFM",
                 _ => null
             };
-
         }
+
 
         public List<UProvider> getProviderData(decimal providerCode)
         {

@@ -1,8 +1,8 @@
 ﻿using Newtonsoft.Json;
 
-namespace CFM_PAYMENTSWS.Providers.BCI.DTOs
+namespace CFM_PAYMENTSWS.Providers.Bim.DTOs
 {
-    public class BCIResponseDTO
+    public class BimResponseDTO
     {
         public string BatchId { get; set; }
         public string Description { get; set; }
@@ -10,18 +10,18 @@ namespace CFM_PAYMENTSWS.Providers.BCI.DTOs
         public string DebitAccount { get; set; }
         public string StatusCode { get; set; }
         public string StatusDescription { get; set; }
-        public List<PaymentRecordsDTO> PaymentRecordsStatus { get; set; }
+        public List<PaymentRecordsDTO> paymentCheckedRecords { get; set; }
         public override string ToString() => JsonConvert.SerializeObject(this);
-        public BCIResponseDTO() { }
+        public BimResponseDTO() { }
 
-        public BCIResponseDTO(string batchId, string description,string statusCode,string statusDescription)
+        public BimResponseDTO(string batchId, string description,string statusCode,string statusDescription)
         {
             BatchId = batchId;
             Description = description;
             StatusCode = statusCode;
             StatusDescription = statusDescription;
         }
-        public BCIResponseDTO(string batchId, string description, string processingDate, string origem, string statusCode, string statusDescription, List<PaymentRecordsDTO> paymentRecordsStatus)
+        public BimResponseDTO(string batchId, string description, string processingDate, string origem, string statusCode, string statusDescription, List<PaymentRecordsDTO> paymentRecordsStatus)
         {
             BatchId = batchId;
             Description = description;
@@ -29,7 +29,7 @@ namespace CFM_PAYMENTSWS.Providers.BCI.DTOs
             DebitAccount = origem;
             StatusCode = statusCode;
             StatusDescription = statusDescription;
-            PaymentRecordsStatus = paymentRecordsStatus;
+            paymentCheckedRecords = paymentRecordsStatus;
         }
     }
 }

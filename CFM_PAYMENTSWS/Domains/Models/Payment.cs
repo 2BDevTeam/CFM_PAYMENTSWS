@@ -22,7 +22,7 @@ namespace CFM_PAYMENTSWS.Domains.Models
     {
         public string BatchId { get; set; }
         public string Description { get; set; }
-        public DateTime ProcessingDate { get; set; }
+        public string ProcessingDate { get; set; }
         public string DebitAccount { get; set; }
         public string? initgPtyCode { get; set; } = null;
         public string? BatchBooking { get; set; } = null;
@@ -39,5 +39,19 @@ namespace CFM_PAYMENTSWS.Domains.Models
         }
     }
 
+
+    // Esta classe foi criada somente para permitir que o banco Bim receba pagamentos, devido a versão 1.5 da descrição técnica
+    public class Paymentv1_5
+    {
+        public string BatchId { get; set; }
+        public string Description { get; set; }
+        public string ProcessingDate { get; set; }
+        public string DebitAccount { get; set; }
+        public string initgPty_Code { get; set; } = null!;
+        public int BatchBooking { get; set; }
+        public List<PaymentRecords> PaymentRecords { get; set; }
+        public override string ToString() => JsonConvert.SerializeObject(this);
+        
+    }
 
 }

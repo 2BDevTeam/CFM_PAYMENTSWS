@@ -10,7 +10,7 @@ namespace CFM_PAYMENTSWS.DTOs
         public string BatchId { get; set; }
 
         [Required(ErrorMessage = "ProcessingDate is required.")]
-        public DateTime ProcessingDate { get; set; }
+        public string ProcessingDate { get; set; }
 
         [Required(ErrorMessage = "StatusCode is required.")]
         [RegularExpression("^[0-9]{4}$", ErrorMessage = "StatusCode must be a 4-digit number.")]

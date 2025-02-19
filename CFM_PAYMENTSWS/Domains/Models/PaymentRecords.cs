@@ -11,7 +11,7 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public string TransactionDescription { get; set; }
         public string Currency { get; set; }
         public decimal Amount { get; set; }
-        public string BeneficiaryEmail { get; set; }
+        public string? BeneficiaryEmail { get; set; }
         public override string ToString() => JsonConvert.SerializeObject(this);
     }
 

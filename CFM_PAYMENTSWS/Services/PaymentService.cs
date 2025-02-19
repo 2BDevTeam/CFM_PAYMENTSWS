@@ -22,6 +22,9 @@ using MPesa;
 using CFM_PAYMENTSWS.Providers.Mpesa;
 using CFM_PAYMENTSWS.Providers.BCI.Repository;
 using CFM_PAYMENTSWS.Providers.BCI.DTOs;
+using Hangfire.States;
+using CFM_PAYMENTSWS.Providers.Bim.Repository;
+using CFM_PAYMENTSWS.Providers.Bim.DTOs;
 
 namespace CFM_PAYMENTSWS.Services
 {
@@ -57,7 +60,7 @@ namespace CFM_PAYMENTSWS.Services
         }
 
 
-        public bool VerificarJobActivos(string lockKey)
+        public async Task<bool> VerificarJobActivos(string lockKey)
         {
             var jobLock = _phcRepository.GetJobLocks(lockKey);
 
@@ -93,7 +96,7 @@ namespace CFM_PAYMENTSWS.Services
         {
             string lockKey = "processarPagamentos";
 
-            if (VerificarJobActivos(lockKey))
+            if (await VerificarJobActivos(lockKey))
                 return;
 
             try
@@ -110,19 +113,79 @@ namespace CFM_PAYMENTSWS.Services
                     {
                         case 101:
 
-                            pagamentoQueue = _paymentRespository.GetPagamentosEmFila("Por enviar", 101);
+                            //pagamentoQueue = _paymentRespository.GetPagamentosEmFila("Por enviar", 101);
                             Debug.Print($"Pagamento queue   {JsonConvert.SerializeObject(pagamentoQueue)} ");
-                            await MpesaProcessing(pagamentoQueue);
+                            //await MpesaProcessing(pagamentoQueue);
                             break;
 
                         case 105:
                             pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 105);
-                            NedBankProcessing(pagamentos);
+                            await NedBankProcessing(pagamentos);
                             break;
 
                         case 106:
                             pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 106);
-                            BCIProcessing(pagamentos);
+                            await BCIProcessing(pagamentos, false);
+                            break;
+
+                        case 107:
+                            pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 107);
+                            await BimProcessing(pagamentos, false);
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
+                var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
+                logHelper.generateLogJB(response, "processarPagamento" + Guid.NewGuid(), "PaymentService.processarPagamento", ex.Message);
+            }
+            finally
+            {
+                TerminarJob(lockKey);
+            }
+
+        }
+
+
+        public async Task VerificarPagamentos()
+        {
+            string lockKey = "verificarPagamentos";
+
+            if (await VerificarJobActivos(lockKey))
+                return;
+
+            try
+            {
+                var canaisPagamento = _paymentRespository.GetCanais_UPaymentQueue();
+                Debug.Print($"canaisPagamento   {JsonConvert.SerializeObject(canaisPagamento)} ");
+
+                List<U2bPaymentsQueue> pagamentoQueue = new();
+                List<PaymentsQueue> pagamentos = new();
+                foreach (var canal in canaisPagamento)
+                {
+
+                    switch (canal)
+                    {
+                        case 101:
+
+                            break;
+
+                        case 105:
+                            //pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 105);
+                            //NedBankProcessing(pagamentos);
+                            break;
+
+                        case 106:
+                            pagamentos = _paymentRespository.GetPagamentQueue("Por processar", 106);
+                            await BCIProcessing(pagamentos, true);
                             break;
 
                         default:
@@ -175,11 +238,11 @@ namespace CFM_PAYMENTSWS.Services
                     foreach (var pagamento in paymentHeader.PaymentCheckedRecords)
                     {
 
-                        insere2bHistorico(pagamento.TransactionId, paymentHeader.BatchId, paymentHeader.BatchId, paymentHeader.StatusCode, paymentHeader.StatusDescription, pagamento.StatusCode, pagamento.StatusDescription);
+                        insere2bHistorico(pagamento.TransactionId.Trim(), paymentHeader.BatchId, paymentHeader.BatchId, paymentHeader.StatusCode, paymentHeader.StatusDescription, pagamento.StatusCode, pagamento.StatusDescription);
 
                         switch (pagamento.StatusCode)
                         {
-                            case "0000":
+                            case "0000" or "3005":
                                 actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento processado com sucesso", paymentHeader, pagamento);
                                 break;
 
@@ -239,6 +302,20 @@ namespace CFM_PAYMENTSWS.Services
                                 actualizarEstadoDoPagamentoByTransactionId("Erro", "BatchId não encontrado", paymentHeader, pagamento);
                                 break;
 
+
+                            case "0018":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Saldo insuficiente", paymentHeader, pagamento);
+                                break;
+
+                            case "0021":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Conta não movimentável", paymentHeader, pagamento);
+                                break;
+
+
+                            case "0007":
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Montante inválido", paymentHeader, pagamento);
+                                break;
+
                             default:
                                 actualizarEstadoDoPagamentoByTransactionId("Erro", "Código de status desconhecido", paymentHeader, pagamento);
                                 break;
@@ -258,42 +335,109 @@ namespace CFM_PAYMENTSWS.Services
         }
 
 
-        void BCIProcessing(List<PaymentsQueue> pagamentos)
+        async Task BimProcessing(List<PaymentsQueue> pagamentos, bool checkPayments)
         {
 
             foreach (var pagamento in pagamentos)
             {
 
+                BimAPI bimRepository = new BimAPI();
+
+                Paymentv1_5 paymentv1_5 = apiHelper.ConvertPaymentToV1_5(pagamento.payment);
+
+                BimResponseDTO bimResponseDTO = new BimResponseDTO();
+
+                if (checkPayments)
+                {
+                    //bciResponseDTO = bimRepository.checkPayments(pagamento.payment.BatchId, pagamento.payment.initgPtyCode ?? "");
+                }
+                else
+                {
+                    Debug.Print("BimProcessing");
+                    Debug.Print($"{pagamento.payment}");
+
+                    bimResponseDTO = await bimRepository.loadPayments(paymentv1_5);
+                }
+
+
+                ResponseDTO bimResponse = routeMapper.mapLoadPaymentResponse(107, bimResponseDTO);
+
+                Debug.Print("Resposta do Load");
+                Debug.Print(bimResponse.ToString());
+
+                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, bimResponse.response.cod, bimResponse.response.codDesc, "", "");
+
+                Debug.Print("insere2bHistorico");
+
+                switch (bimResponse.response.cod)
+                {
+
+                    case "0000":
+                        actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
+                        Debug.Print("Teste Por processar" + bimResponse.response.codDesc);
+                        break;
+
+                    case "2028":
+                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", bimResponse.response.codDesc);
+                        Debug.Print("Teste Por Corrigir" + bimResponse.response.codDesc);
+                        break;
+                    default:
+                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", bimResponse.response.codDesc);
+                        //Debug.Print("Teste HS3" + bimResponse.response.codDesc);
+                        break;
+
+                }
+
+
+                logHelper.generateLogJB(bimResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - Bim", pagamento.payment);
+
+            }
+
+        }
+
+
+        async Task BCIProcessing(List<PaymentsQueue> pagamentos, bool checkPayments)
+        {
+
+            foreach (var pagamento in pagamentos)
+            {
+
+                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, "bciResponse.response.cod", "bciResponse.response.codDesc", "", "");
                 BCIAPI bciRepository = new BCIAPI();
 
                 PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase(pagamento.payment);
-                BCIResponseDTO bciResponseDTO = bciRepository.loadPayments(paymentCamel);
+
+                BCIResponseDTO bciResponseDTO = new BCIResponseDTO();
+
+                if (checkPayments)
+                {
+                    //bciResponseDTO = bciRepository.checkPayments(pagamento.payment.BatchId, pagamento.payment.initgPtyCode ?? "");
+                }
+                else
+                {
+                    bciResponseDTO = bciRepository.loadPayments(paymentCamel);
+                }
+
 
                 ResponseDTO bciResponse = routeMapper.mapLoadPaymentResponse(106, bciResponseDTO);
+
 
                 Debug.Print("Resposta do Load");
                 Debug.Print(bciResponse.ToString());
 
                 insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, bciResponse.response.cod, bciResponse.response.codDesc, "", "");
 
-                /*
+
                 switch (bciResponse.response.cod)
                 {
-                    case "0011":
+                    case "2028":
                         actualizarEstadoDoPagamento(pagamento, "Por corrigir", bciResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + bciResponse.response.codDesc);
                         break;
 
-                    case "0000":
+                    case "0011" or "3002":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + bciResponse.response.codDesc);
-                        break;
-
-                    case "0010":
-                        break;
-
-                    case "0007":
-                        Debug.Print("Teste HS2" + bciResponse.response.codDesc);
                         break;
 
                     default:
@@ -301,14 +445,15 @@ namespace CFM_PAYMENTSWS.Services
                         break;
 
                 }
-                */
-                logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+
+
+                logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - BCI", pagamento.payment);
 
             }
 
         }
 
-        void NedBankProcessing(List<PaymentsQueue> pagamentos)
+        async Task NedBankProcessing(List<PaymentsQueue> pagamentos)
         {
 
             foreach (var pagamento in pagamentos)
@@ -348,7 +493,7 @@ namespace CFM_PAYMENTSWS.Services
                         break;
 
                 }
-                logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento", pagamento.payment.ToString());
+                logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - nedbank", pagamento.payment);
 
             }
 
@@ -532,18 +677,18 @@ namespace CFM_PAYMENTSWS.Services
             EncryptionHelper encryptionHelper = new EncryptionHelper();
 
             Debug.Print("Entrou na actualizacao por ID");
-            var payment = _paymentRespository.GetPayment(pagamento.TransactionId, paymentHeader.BatchId);
+            var payment = _paymentRespository.GetPayment(pagamento.TransactionId.Trim(), paymentHeader.BatchId);
 
             //var decryptTran = encryptionHelper.DecryptText(connString, u2BPaymentsQueue.transactionId, u2BPaymentsQueue.keystamp, u2BPaymentsQueue.BatchId);
             var encryptedData = _paymentRespository.GetPaymentsQueueBatchId(paymentHeader.BatchId);
 
 
             var paymentQueue = encryptedData
-                                     .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.TransactionId, u2BPaymentsQueue.Keystamp) == pagamento.TransactionId)
+                                     .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.TransactionId, u2BPaymentsQueue.Keystamp) == pagamento.TransactionId.Trim())
                                      .FirstOrDefault();
 
-            /*
             var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Oristamp);
+            /*
             */
 
 
@@ -558,7 +703,6 @@ namespace CFM_PAYMENTSWS.Services
                 payment.BankReference = pagamento.BankReference;
             }
 
-            /*
             if (wspayment != null)
             {
                 wspayment.Dataprocessado = DateTime.Now;
@@ -567,12 +711,15 @@ namespace CFM_PAYMENTSWS.Services
                 wspayment.Usrdata = DateTime.Now;
                 wspayment.Bankreference = pagamento.BankReference;
             }
-            */
             /*
+            */
             if (paymentQueue != null)
             {
-                _genericPaymentRepository.Delete(paymentQueue);
+                //_genericPaymentRepository.Delete(paymentQueue);
             }
+
+            DateTime processingDate = ParseProcessingDate(paymentHeader.ProcessingDate);
+            Debug.Print($"processingDateprocessingDate: {paymentHeader.ProcessingDate}");
 
 
             switch (payment.Tabela)
@@ -582,8 +729,8 @@ namespace CFM_PAYMENTSWS.Services
 
                     po.Process = true;
                     po.URefbanco = pagamento.BankReference;
-                    po.Dvalor = paymentHeader.ProcessingDate;
-                    po.Tbcheque = pagamento.BankReference;
+                    po.Dvalor = processingDate;
+                    //po.Tbcheque = pagamento.BankReference;
 
                     break;
 
@@ -592,8 +739,8 @@ namespace CFM_PAYMENTSWS.Services
 
                     //pd.Process = true;
                     pd.URefbanco = pagamento.BankReference;
-                    pd.Rdata = paymentHeader.ProcessingDate;
-                    pd.Cheque = pagamento.BankReference.ToString();
+                    pd.Rdata = processingDate;
+                    //pd.Cheque = pagamento.BankReference.ToString();
 
                     break;
 
@@ -601,8 +748,8 @@ namespace CFM_PAYMENTSWS.Services
                     var ol = _phcRepository.GetOw(paymentQueue.Oristamp);
 
                     //ol.Process = true;
-                    ol.Dvalor = paymentHeader.ProcessingDate;
-                    ol.Cheque = pagamento.BankReference;
+                    ol.Dvalor = processingDate;
+                    //ol.Cheque = pagamento.BankReference;
 
                     break;
                 case "TB":
@@ -616,18 +763,29 @@ namespace CFM_PAYMENTSWS.Services
                     break;
 
             }
+            /*
             */
 
-            /*
             var trfb = _phcRepository.GetUTrfb(paymentQueue.BatchId);
             if (trfb != null)
             {
-                trfb.Rdata = paymentHeader.ProcessingDate;
+                trfb.Rdata = processingDate;
             }
+            /*
             */
             _genericPaymentRepository.SaveChanges();
             _genericPHCRepository.SaveChanges();
 
+        }
+
+        DateTime ParseProcessingDate(string processingDateString)
+        {
+            if (DateTime.TryParse(processingDateString, out DateTime result))
+            {
+                return result;
+            }
+
+            throw new ArgumentException($"Invalid date format: {processingDateString}");
         }
 
         public void actualizarEstadoDoPagamentoByTransactionId(string estado, string descricao, U2bPaymentsQueue paymentQueue)
@@ -760,6 +918,10 @@ namespace CFM_PAYMENTSWS.Services
             string stampHs = 25.UseThisSizeForStamp();
             //U2bPaymentsHs u2Bhistoric = new U2bPaymentsHs { transactionId, "", "", "", "", 0, "", codStatus, descStatus, batchid, DateTime.Now, codStatusHs, descStatusHs, stampHs, "", DateTime.Now };
 
+            if (_genericPaymentRepository == null)
+            {
+                throw new InvalidOperationException("O repositório foi descartado antes da chamada.");
+            }
             U2bPaymentsHs u2Bhistoric = new U2bPaymentsHs
             {
                 TransactionId = transactionId,
@@ -780,9 +942,19 @@ namespace CFM_PAYMENTSWS.Services
                 Ousrdata = DateTime.Now
             };
 
-            _genericPaymentRepository.Add(u2Bhistoric);
 
-            _genericPaymentRepository.SaveChanges();
+            try
+            {
+                _genericPaymentRepository.Add(u2Bhistoric);
+                _genericPaymentRepository.SaveChanges();
+                Debug.Print("Insere HS na actualizacao   SaveChanges");
+            }
+            catch (ObjectDisposedException ex)
+            {
+                Debug.Print("Erro: " + ex.Message);
+                throw;
+            }
+
         }
 
         public RespostaDTO GerarResposta(Response response, decimal responseID)

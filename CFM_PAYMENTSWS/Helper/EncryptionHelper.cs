@@ -18,7 +18,7 @@ namespace CFM_PAYMENTSWS.Helper
 
             var config = configuration.Build();
             var connectionString = config.GetConnectionString("ConnStr");
-            Debug.Print($"connectionString {connectionString}");
+            //Debug.Print($"connectionString {connectionString}");
 
 
             var encKey = GetEncryptedKey(connectionString, _keystamp);
