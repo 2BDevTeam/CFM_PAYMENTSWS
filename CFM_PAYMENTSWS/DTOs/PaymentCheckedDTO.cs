@@ -12,12 +12,12 @@ namespace CFM_PAYMENTSWS.DTOs
         [Required(ErrorMessage = "ProcessingDate is required.")]
         public string ProcessingDate { get; set; }
 
-        [Required(ErrorMessage = "StatusCode is required.")]
-        [RegularExpression("^[0-9]{4}$", ErrorMessage = "StatusCode must be a 4-digit number.")]
-        [Range(0, 9999, ErrorMessage = "StatusCode must be between 0000 and 9999.")]
+        //[Required(ErrorMessage = "StatusCode is required.")]
+        //[RegularExpression("^[0-9]{4}$", ErrorMessage = "StatusCode must be a 4-digit number.")]
+        //[Range(0, 9999, ErrorMessage = "StatusCode must be between 0000 and 9999.")]
         public string StatusCode { get; set; }
 
-        [Required(ErrorMessage = "StatusDescription is required.")]
+        //[Required(ErrorMessage = "StatusDescription is required.")]
         public string StatusDescription { get; set; }
 
         [Required(ErrorMessage = "PaymentCheckedRecords is required.")]

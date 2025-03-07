@@ -303,7 +303,7 @@ namespace CFM_PAYMENTSWS.Services
                                 break;
 
 
-                            case "0018":
+                            case "0018" or "0022":
                                 actualizarEstadoDoPagamentoByTransactionId("Erro", "Saldo insuficiente", paymentHeader, pagamento);
                                 break;
 
@@ -317,7 +317,7 @@ namespace CFM_PAYMENTSWS.Services
                                 break;
 
                             default:
-                                actualizarEstadoDoPagamentoByTransactionId("Erro", "Código de status desconhecido", paymentHeader, pagamento);
+                                actualizarEstadoDoPagamentoByTransactionId("Erro",pagamento.StatusDescription, paymentHeader, pagamento);
                                 break;
                         }
 
@@ -372,7 +372,7 @@ namespace CFM_PAYMENTSWS.Services
                 switch (bimResponse.response.cod)
                 {
 
-                    case "0000":
+                    case "0000" or "0011":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + bimResponse.response.codDesc);
                         break;
