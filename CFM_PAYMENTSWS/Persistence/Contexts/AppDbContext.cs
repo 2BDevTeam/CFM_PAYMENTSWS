@@ -280,9 +280,9 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("moeda")
                     .HasDefaultValueSql("('')");
 
-                entity.Property(e => e.Tipo)
-                    .IsUnicode(false)
-                    .HasColumnName("tipo");
+                //entity.Property(e => e.Tipo)
+                //    .IsUnicode(false)
+                //    .HasColumnName("tipo");
 
                 entity.Property(e => e.Origem)
                     .HasMaxLength(100)
