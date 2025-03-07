@@ -55,6 +55,7 @@ namespace CFM_PAYMENTSWS.Helper
             //httpWebRequest.Host = Host;
            // httpWebRequest.UseDefaultCredentials = UseDefaultCredentials;
             httpWebRequest.Headers.Add("Authorization","Bearer "+ Authorization);
+            Debug.Print("Authorization: " + Authorization);
 
             // httpWebRequest.Headers.Add("Origin", Origin);
             httpWebRequest.Headers.Add("User-Agent", userAgent);

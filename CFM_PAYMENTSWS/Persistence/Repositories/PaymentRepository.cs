@@ -110,7 +110,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         {
 
                             BatchId = group.Key.Trim(),
-                            Description = group.First().Description,
+                            Description = (group.First().Description == "") ? $"Transf." : group.First().Description,
                             ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
                             DebitAccount = group.First().Origem,
                             initgPtyCode = GetAuxCamposEntityCode(group.First().Canal),
@@ -119,7 +119,8 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                             {
                                 Amount = paymentRecord.Valor,
                                 Currency = paymentRecord.Moeda,
-                                TransactionDescription = paymentRecord.TransactionDescription,
+                                TransactionDescription = (paymentRecord.TransactionDescription == "" ? 
+                                        $"Transf. {encryptionHelper.DecryptText(paymentRecord.BeneficiaryName, paymentRecord.Keystamp)}-{encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp)}" : paymentRecord.TransactionDescription),
                                 BeneficiaryName = encryptionHelper.DecryptText(paymentRecord.BeneficiaryName, paymentRecord.Keystamp),
                                 TransactionId = encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp),
                                 CreditAccount = encryptionHelper.DecryptText(paymentRecord.Destino, paymentRecord.Keystamp),

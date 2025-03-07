@@ -435,7 +435,7 @@ namespace CFM_PAYMENTSWS.Services
                         Debug.Print("Teste Por Corrigir" + bciResponse.response.codDesc);
                         break;
 
-                    case "0011" or "3002":
+                    case "0011" or "3002" or "0000" or "1001":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + bciResponse.response.codDesc);
                         break;
@@ -447,7 +447,7 @@ namespace CFM_PAYMENTSWS.Services
                 }
 
 
-                logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - BCI", pagamento.payment);
+                logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - BCI", paymentCamel);
 
             }
 
@@ -591,7 +591,7 @@ namespace CFM_PAYMENTSWS.Services
                     Transactionid = pagamento.Referencia,
                     Origem = pagamento.MSISDN,
                     Destino = serviceProviderCodeData.valor,
-                    Tipo = "Carteira Móvel",
+                    //Tipo = "Carteira Móvel",
                     Estado = "Por Enviar",
                     Descricao = "Pagamento por enviar",
 
