@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace CFM_PAYMENTSWS.Domains.Models
@@ -31,6 +32,8 @@ namespace CFM_PAYMENTSWS.Domains.Models
             var options = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                 WriteIndented = true // Opcional, para melhor legibilidade.
             };
 

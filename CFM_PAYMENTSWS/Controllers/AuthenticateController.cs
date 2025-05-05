@@ -96,7 +96,6 @@ namespace CFM_PAYMENTSWS.Controllers
 
         }
 
-        
         [HttpPost]
         [Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
@@ -119,6 +118,7 @@ namespace CFM_PAYMENTSWS.Controllers
             return Ok(new ResponseDTO(WebTransactionCodes.SUCCESS, null, null).ToString());
         }
 
+        /*
         [HttpPost]
         [Route("register-admin")]
         public async Task<IActionResult> RegisterAdmin([FromBody] RegisterModel model)
@@ -155,7 +155,7 @@ namespace CFM_PAYMENTSWS.Controllers
 
             return Ok(new ResponseDTO(WebTransactionCodes.SUCCESS, null, null).ToString());
         }
-        
+        */
 
 
         private JwtSecurityToken GetToken(List<Claim> authClaims)
@@ -172,5 +172,8 @@ namespace CFM_PAYMENTSWS.Controllers
 
             return token;
         }
+        
+
+
     }
 }
