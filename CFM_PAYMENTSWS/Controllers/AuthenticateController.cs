@@ -32,31 +32,18 @@ namespace CFM_PAYMENTSWS.Controllers
         [HttpPost]
         [Route("login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
-
         {
-            var ipOrigem = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            Debug.Print($"ipOrigemipOrigem {ipOrigem}");
-            /* return Ok(new
-             {
-                 token = "",
-                 expiration = "",
-                 allowed = true,
-                 output_response = "AUTHENTICATED"
-             });*/
             try
             {
-                Debug.Print("Before user validation");
                 var user = await _userManager.FindByNameAsync(model.Username);
-                Debug.Print("After user");
+
                 if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
                 {
                     var userRoles = await _userManager.GetRolesAsync(user);
-
                     var authClaims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    new Claim(JwtRegisteredClaimNames.Jti, DateTime.Today.ToString("yyyy-MM-dd")) // Usa a data como JTI
                 };
 
                     foreach (var userRole in userRoles)
@@ -64,9 +51,7 @@ namespace CFM_PAYMENTSWS.Controllers
                         authClaims.Add(new Claim(ClaimTypes.Role, userRole));
                     }
 
-                    Debug.Print($" auth claim {authClaims.ToString()}");
-                    var token = GetToken(authClaims);
-                    Debug.Print($" AFTER GET TOKEN {authClaims.ToString()}");
+                    var token = GetDailyToken(authClaims);
 
                     return Ok(new
                     {
@@ -76,27 +61,44 @@ namespace CFM_PAYMENTSWS.Controllers
                         output_response = "AUTHENTICATED"
                     });
                 }
+
                 return Ok(new
                 {
                     token = "",
                     expiration = "",
                     allowed = false,
                     output_response = "BAD_CREDENTIALS"
-
                 });
             }
-
             catch (Exception ex)
             {
-
                 Debug.Print($"Erro interno  {ex.Message} {ex.StackTrace}");
-
                 return BadRequest(ex.Message);
             }
-
         }
 
-        
+        private JwtSecurityToken GetDailyToken(List<Claim> authClaims)
+        {
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+
+            // Define a data de expiração para o final do dia atual
+            var today = DateTime.UtcNow.Date;
+            var expirationTime = today.AddHours(1);
+
+            // Adiciona um claim com a data atual para garantir uniqueness do token por dia
+            authClaims.Add(new Claim("daily_identifier", today.ToString("yyyy-MM-dd")));
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JWT:ValidIssuer"],
+                audience: _configuration["JWT:ValidAudience"],
+                expires: expirationTime,
+                claims: authClaims,
+                signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
+            );
+
+            return token;
+        }
+
         [HttpPost]
         [Route("register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
@@ -165,7 +167,7 @@ namespace CFM_PAYMENTSWS.Controllers
             var token = new JwtSecurityToken(
                 issuer: _configuration["JWT:ValidIssuer"],
                 audience: _configuration["JWT:ValidAudience"],
-                expires: DateTime.Now.AddHours(3),
+                expires: DateTime.Now.AddHours(1),
                 claims: authClaims,
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
                 );
