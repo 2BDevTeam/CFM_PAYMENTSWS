@@ -130,6 +130,10 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
                 httpWebRequest.Headers.Add("Authorization", $"Bearer {authResult}");
                 httpWebRequest.Headers.Add("Scope", "PymtApiCFM");
 
+                httpWebRequest.ServerCertificateValidationCallback +=
+                    (sender, certificate, chain, sslPolicyErrors) => true;
+
+
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
                     string json = payment.ToString();
