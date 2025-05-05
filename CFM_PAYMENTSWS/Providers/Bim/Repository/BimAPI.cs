@@ -128,7 +128,7 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
                 string result = "";
 
                 httpWebRequest.Headers.Add("Authorization", $"Bearer {authResult}");
-                httpWebRequest.Headers.Add("Scope", "CFM");
+                httpWebRequest.Headers.Add("Scope", "PymtApiCFM");
 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
