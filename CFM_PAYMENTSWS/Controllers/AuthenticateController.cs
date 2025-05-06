@@ -51,7 +51,7 @@ namespace CFM_PAYMENTSWS.Controllers
                         authClaims.Add(new Claim(ClaimTypes.Role, userRole));
                     }
 
-                    var token = GetDailyToken(authClaims);
+                    var token = GetHalfHourToken(authClaims);
 
                     return Ok(new
                     {
@@ -76,17 +76,20 @@ namespace CFM_PAYMENTSWS.Controllers
                 return BadRequest(ex.Message);
             }
         }
-
-        private JwtSecurityToken GetDailyToken(List<Claim> authClaims)
+        private JwtSecurityToken GetHalfHourToken(List<Claim> authClaims)
         {
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+            var authSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["JWT:Secret"])
+            );
 
-            // Define a data de expiração para o final do dia atual
-            var today = DateTime.UtcNow.Date;
-            var expirationTime = today.AddHours(1);
+            var issuedAt = DateTime.Now;
+            var expirationTime = issuedAt.AddMinutes(30);
 
-            // Adiciona um claim com a data atual para garantir uniqueness do token por dia
-            authClaims.Add(new Claim("daily_identifier", today.ToString("yyyy-MM-dd")));
+            var currentSlot = issuedAt.Minute < 30
+                ? new DateTime(issuedAt.Year, issuedAt.Month, issuedAt.Day, issuedAt.Hour, 0, 0)
+                : new DateTime(issuedAt.Year, issuedAt.Month, issuedAt.Day, issuedAt.Hour, 30, 0);
+
+            authClaims.Add(new Claim("half_hour_slot", currentSlot.ToString("yyyy-MM-dd HH:mm")));
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["JWT:ValidIssuer"],
