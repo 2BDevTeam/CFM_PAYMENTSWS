@@ -372,7 +372,7 @@ namespace CFM_PAYMENTSWS.Services
                 switch (bimResponse.response.cod)
                 {
 
-                    case "0000" or "0011":
+                    case "0" or "0000" or "0011":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + bimResponse.response.codDesc);
                         break;

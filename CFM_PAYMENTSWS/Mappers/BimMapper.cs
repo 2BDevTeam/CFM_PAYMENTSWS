@@ -111,11 +111,11 @@ namespace CFM_PAYMENTSWS.Mappers
         public ResponseCodesDTO getStatusCode(BimResponseDTO bimResponseDTO)
         {
 
-            if (bimResponseDTO.StatusCode == "0000" || bimResponseDTO.StatusCode == "16")
+            if (bimResponseDTO.StatusCode == "0000" || bimResponseDTO.StatusCode == "0" || bimResponseDTO.StatusCode == "16")
                 return WebTransactionCodes.SUCCESS;
 
 
-            return new ResponseCodesDTO("0011", bimResponseDTO.StatusDescription);
+            return new ResponseCodesDTO("0404", bimResponseDTO.StatusDescription);
 
         }
 
