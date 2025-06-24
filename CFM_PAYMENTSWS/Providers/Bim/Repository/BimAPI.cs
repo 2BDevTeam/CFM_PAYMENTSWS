@@ -38,7 +38,8 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
             try
             {
 
-                apiData = apiHelper.getApiEntity("Bim", "AUTH");
+                apiData = apiHelper.getApiEntity("Bim", "login");
+                Debug.Print(" apiData  " + JsonConvert.SerializeObject(apiData));
 
                 if (apiData?.status == null || apiData?.status == "0")
                 {
@@ -53,6 +54,9 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
                 Debug.Print("   " + endpoint.ToString());
 
                 var httpWebRequest = httpHelper.GetHttpWebRequestByEntityAndRoute("Bim", "login");
+
+                httpWebRequest.ServerCertificateValidationCallback +=
+                    (sender, certificate, chain, sslPolicyErrors) => true;
 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
@@ -82,7 +86,7 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
                     using (streamReader = new StreamReader(httpResponse.GetResponseStream())) ;
 
                     BimAuthResponse bimAuthResponse = JsonConvert.DeserializeObject<BimAuthResponse>(result);
-                    Debug.WriteLine("Resultado Auth Token " + bimAuthResponse.token);
+                    Debug.Print("Resultado Auth Token " + bimAuthResponse.token);
 
                     return bimAuthResponse.token;
 
@@ -127,8 +131,10 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
 
                 string result = "";
 
+                Debug.Print("authResult " + authResult);
                 httpWebRequest.Headers.Add("Authorization", $"Bearer {authResult}");
                 httpWebRequest.Headers.Add("Scope", "PymtApiCFM");
+
 
                 httpWebRequest.ServerCertificateValidationCallback +=
                     (sender, certificate, chain, sslPolicyErrors) => true;
