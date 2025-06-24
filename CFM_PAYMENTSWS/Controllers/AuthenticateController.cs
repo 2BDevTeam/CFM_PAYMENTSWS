@@ -32,18 +32,31 @@ namespace CFM_PAYMENTSWS.Controllers
         [HttpPost]
         [Route("login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
+
         {
+            var ipOrigem = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            Debug.Print($"ipOrigemipOrigem {ipOrigem}");
+            /* return Ok(new
+             {
+                 token = "",
+                 expiration = "",
+                 allowed = true,
+                 output_response = "AUTHENTICATED"
+             });*/
             try
             {
+                Debug.Print("Before user validation");
                 var user = await _userManager.FindByNameAsync(model.Username);
-
+                Debug.Print("After user");
                 if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
                 {
                     var userRoles = await _userManager.GetRolesAsync(user);
+
                     var authClaims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim(JwtRegisteredClaimNames.Jti, DateTime.Today.ToString("yyyy-MM-dd")) // Usa a data como JTI
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 };
 
                     foreach (var userRole in userRoles)
@@ -51,7 +64,9 @@ namespace CFM_PAYMENTSWS.Controllers
                         authClaims.Add(new Claim(ClaimTypes.Role, userRole));
                     }
 
-                    var token = GetHalfHourToken(authClaims);
+                    Debug.Print($" auth claim {authClaims.ToString()}");
+                    var token = GetToken(authClaims);
+                    Debug.Print($" AFTER GET TOKEN {authClaims.ToString()}");
 
                     return Ok(new
                     {
@@ -61,35 +76,36 @@ namespace CFM_PAYMENTSWS.Controllers
                         output_response = "AUTHENTICATED"
                     });
                 }
-
                 return Ok(new
                 {
                     token = "",
                     expiration = "",
                     allowed = false,
                     output_response = "BAD_CREDENTIALS"
+
                 });
             }
+
             catch (Exception ex)
             {
+
                 Debug.Print($"Erro interno  {ex.Message} {ex.StackTrace}");
+
                 return BadRequest(ex.Message);
             }
+
         }
+
         private JwtSecurityToken GetHalfHourToken(List<Claim> authClaims)
         {
             var authSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_configuration["JWT:Secret"])
             );
 
-            var issuedAt = DateTime.Now;
-            var expirationTime = issuedAt.AddMinutes(30);
+            var issuedAt = DateTime.UtcNow;
+            var expirationTime = issuedAt.AddHours(2).AddMinutes(30);
 
-            var currentSlot = issuedAt.Minute < 30
-                ? new DateTime(issuedAt.Year, issuedAt.Month, issuedAt.Day, issuedAt.Hour, 0, 0)
-                : new DateTime(issuedAt.Year, issuedAt.Month, issuedAt.Day, issuedAt.Hour, 30, 0);
-
-            authClaims.Add(new Claim("half_hour_slot", currentSlot.ToString("yyyy-MM-dd HH:mm")));
+            authClaims.Add(new Claim("half_hour_slot", expirationTime.ToString("yyyy-MM-dd HH:mm")));
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["JWT:ValidIssuer"],
@@ -170,7 +186,7 @@ namespace CFM_PAYMENTSWS.Controllers
             var token = new JwtSecurityToken(
                 issuer: _configuration["JWT:ValidIssuer"],
                 audience: _configuration["JWT:ValidAudience"],
-                expires: DateTime.Now.AddHours(1),
+                expires: DateTime.Now.AddHours(3),
                 claims: authClaims,
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
                 );
