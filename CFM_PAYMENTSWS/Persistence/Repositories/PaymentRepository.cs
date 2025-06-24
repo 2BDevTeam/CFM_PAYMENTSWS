@@ -125,8 +125,8 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                                 TransactionId = encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp),
                                 CreditAccount = encryptionHelper.DecryptText(paymentRecord.Destino, paymentRecord.Keystamp),
                                 BeneficiaryEmail = string.IsNullOrEmpty(encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp))
-                                                        ? "N/A"
-                                                        : encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp)
+                                                        ? "NA"
+                                                        : FormatSpecialChars(encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp))
 
                             }).ToList()
                         }
@@ -155,6 +155,17 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             var payment = _context.Set<U2bPayments>()
                 .FirstOrDefault(upayment => upayment.U2bPaymentsstamp == u2bPaymentsStamp);
             return payment;
+        }
+
+        static string FormatSpecialChars(string campo)
+        {
+            if (string.IsNullOrEmpty(campo))
+                return "";
+
+            if (campo.Contains('/'))
+                return campo.Split('/')[0];
+
+            return campo;
         }
 
         private static string? GetAuxCamposBatchBooking(string tabela, int provider)
