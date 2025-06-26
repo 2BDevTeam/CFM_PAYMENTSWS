@@ -219,7 +219,7 @@ namespace CFM_PAYMENTSWS.Services
 
             logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.actualizarPagamentos", json1);
 
-            if (paymentHeader.BatchId== "DNF25052957425.526000003")
+            if (paymentHeader.BatchId== "DNF25052957425.526000003" || paymentHeader.BatchId == "DNF25062062160.282000002")
             {
                 return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
             }
