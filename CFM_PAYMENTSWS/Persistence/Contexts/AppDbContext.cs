@@ -471,6 +471,11 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("tabela")
                     .HasDefaultValueSql("('')");
 
+                entity.Property(e => e.Ccusto)
+                    .IsUnicode(false)
+                    .HasColumnName("ccusto")
+                    .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.TransactionDescription)
                     .HasMaxLength(100)
                     .IsUnicode(false)

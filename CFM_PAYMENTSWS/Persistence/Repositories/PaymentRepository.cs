@@ -110,16 +110,16 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         {
 
                             BatchId = group.Key.Trim(),
-                            Description = (group.First().Description == "") ? $"Transf." : group.First().Description,
+                            Description = (group.First().Description == "") ? $"Transf. " : group.First().Description,
                             ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
                             DebitAccount = group.First().Origem,
-                            initgPtyCode = GetAuxCamposEntityCode(group.First().Canal),
+                            initgPtyCode = GetAuxCamposEntityCode(group.First().Canal, group.First().Ccusto),
                             BatchBooking = GetAuxCamposBatchBooking(group.First().Tabela, group.First().Canal),
                             PaymentRecords = group.Select(paymentRecord => new PaymentRecords
                             {
                                 Amount = paymentRecord.Valor,
                                 Currency = paymentRecord.Moeda,
-                                TransactionDescription = (paymentRecord.TransactionDescription == "" ? 
+                                TransactionDescription = (paymentRecord.TransactionDescription == "" ?
                                         $"Transf. {encryptionHelper.DecryptText(paymentRecord.BeneficiaryName, paymentRecord.Keystamp)}-{encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp)}" : paymentRecord.TransactionDescription),
                                 BeneficiaryName = encryptionHelper.DecryptText(paymentRecord.BeneficiaryName, paymentRecord.Keystamp),
                                 TransactionId = encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp),
@@ -177,17 +177,29 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             } : null;
         }
 
-        private static string? GetAuxCamposEntityCode(int provider)
+        private static string? GetAuxCamposEntityCode(int provider, string ccusto)
         {
+
+            if (provider == 106)
+            {
+                string prefix = ccusto[..1];
+
+                return prefix switch
+                {
+                    "9" => "84d193aa-a6fc-4ada-b367-6b94449f3502",
+                    "1" => "eb84bbe7-7e64-4113-ab95-8a98e9227090",
+                    "2" => "5c67ce71-65ac-4007-a070-74fcfafd864d",
+                    "3" => "1262cba6-53e6-4e43-912e-3f8fcb9373a1",
+                    _ => ""
+                };
+            }
+
             return provider switch
             {
-                //106 => "3a45f122-4d6c-430e-ac6a-90079cb3831d",
-                106 => "84d193aa-a6fc-4ada-b367-6b94449f3502",
                 107 => "CFM",
                 _ => null
             };
         }
-
 
         public List<UProvider> getProviderData(decimal providerCode)
         {

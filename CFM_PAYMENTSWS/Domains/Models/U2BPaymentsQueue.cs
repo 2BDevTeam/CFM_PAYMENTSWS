@@ -32,5 +32,6 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public string? BeneficiaryName { get; set; }
         public string Emailf { get; set; } = null!;
         public string Tabela { get; set; } = null!;
+        public string Ccusto { get; set; } = null!;
     }
 }
