@@ -182,6 +182,9 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
             if (provider == 106)
             {
+                if (string.IsNullOrEmpty(ccusto))
+                    return "84d193aa-a6fc-4ada-b367-6b94449f3502";
+
                 string prefix = ccusto[..1];
 
                 return prefix switch
@@ -190,7 +193,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                     "1" => "eb84bbe7-7e64-4113-ab95-8a98e9227090",
                     "2" => "5c67ce71-65ac-4007-a070-74fcfafd864d",
                     "3" => "1262cba6-53e6-4e43-912e-3f8fcb9373a1",
-                    _ => ""
+                    _ => "84d193aa-a6fc-4ada-b367-6b94449f3502"
                 };
             }
 
