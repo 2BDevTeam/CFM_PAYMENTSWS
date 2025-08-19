@@ -9,7 +9,7 @@ namespace CFM_PAYMENTSWS.Domains.Interface
     {
         public void actualizarEstadoDoPagamento(U2bPaymentsQueue u2BPayments, ResponseDTO responseDTO);
         public List<U2bPaymentsQueue> GetPagamentosEmFila(string estado, decimal canal);
-        public List<PaymentsQueue> GetPagamentQueue(string estado, decimal canal);
+        public Task<List<PaymentsQueue>> GetPagamentQueue(string estado, decimal canal);
         public List<int?> GetCanais_UPaymentQueue();
         public U2bPayments GetPayment(string transactionId, string batchId);
         public U2bPayments GetPaymentByStamp(string u2bPaymentsStamp);

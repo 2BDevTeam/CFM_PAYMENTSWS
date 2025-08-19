@@ -119,17 +119,17 @@ namespace CFM_PAYMENTSWS.Services
                             break;
 
                         case 105:
-                            pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 105);
+                            pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 105);
                             await NedBankProcessing(pagamentos);
                             break;
 
                         case 106:
-                            pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 106);
+                            pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 106);
                             await BCIProcessing(pagamentos, false);
                             break;
 
                         case 107:
-                            pagamentos = _paymentRespository.GetPagamentQueue("Por enviar", 107);
+                            pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 107);
                             await BimProcessing(pagamentos, false);
                             break;
 
@@ -184,7 +184,7 @@ namespace CFM_PAYMENTSWS.Services
                             break;
 
                         case 106:
-                            pagamentos = _paymentRespository.GetPagamentQueue("Por processar", 106);
+                            pagamentos = await _paymentRespository.GetPagamentQueue("Por processar", 106);
                             await BCIProcessing(pagamentos, true);
                             break;
 
@@ -219,7 +219,17 @@ namespace CFM_PAYMENTSWS.Services
 
             logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.actualizarPagamentos", json1);
             //
-            if (paymentHeader.BatchId== "DNF25052957425.526000003" || paymentHeader.BatchId == "DNF25062062160.282000002" || paymentHeader.BatchId == "DNF25062440823.442000003")
+            List<string> listas = new List<string>
+            {
+                "DNF25081338773.433000002_1",
+                "DNF25081352913.676000002_1",
+                "DNF25081354101.867000002_1",
+                "DNF25081339161.417000001_1",
+                "DNF25081352576.652000002_1",
+                "DNF25081353369.858000002_1",
+                "DNF25081342632.428000002_1", "NFE25081945556.1843020_1"
+            };
+            if (listas.Contains(paymentHeader.BatchId))
             {
                 return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
             }
@@ -322,7 +332,7 @@ namespace CFM_PAYMENTSWS.Services
                                 break;
 
                             default:
-                                actualizarEstadoDoPagamentoByTransactionId("Erro",pagamento.StatusDescription, paymentHeader, pagamento);
+                                actualizarEstadoDoPagamentoByTransactionId("Erro", pagamento.StatusDescription, paymentHeader, pagamento);
                                 break;
                         }
 
@@ -359,8 +369,7 @@ namespace CFM_PAYMENTSWS.Services
                 else
                 {
                     Debug.Print("BimProcessing");
-                    Debug.Print($"{pagamento.payment}");
-
+                    Debug.Print($"{paymentv1_5}");
                     bimResponseDTO = await bimRepository.loadPayments(paymentv1_5);
                 }
 

@@ -1,17 +1,18 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using CFM_PAYMENTSWS.Domains.Interface;
+﻿using CFM_PAYMENTSWS.Domains.Interface;
 using CFM_PAYMENTSWS.Domains.Models;
 using CFM_PAYMENTSWS.DTOs;
 using CFM_PAYMENTSWS.Extensions;
 using CFM_PAYMENTSWS.Helper;
 using CFM_PAYMENTSWS.Persistence.Contexts;
 using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Security.Cryptography;
-using static System.Net.WebRequestMethods;
-using Microsoft.Data.SqlClient;
+using System.Transactions;
 using Z.EntityFramework.Plus;
+using static System.Net.WebRequestMethods;
 
 namespace CFM_PAYMENTSWS.Persistence.Repositories
 {
@@ -92,15 +93,36 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             _context.SaveChanges();
         }
 
-        public List<PaymentsQueue> GetPagamentQueue(string estado, decimal canal)
+        public async Task<List<PaymentsQueue>> GetPagamentQueue(string estado, decimal canal)
         {
-
 
             Debug.Print("Get Pagamento queue");
             try
             {
 
-                var pagamentos = _context.Set<U2bPaymentsQueue>()
+                // 1) UPDATE prévio, fora de transacção ambiente
+                 using (var scope = new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
+                {
+                    const string sql =
+                        @"UPDATE q
+                             SET q.ccusto = p.ccusto
+                          FROM dbo.u_2b_paymentsQueue AS q
+                          JOIN [nacala].[E14E105BD_CFM].dbo.po AS p
+                            ON p.postamp COLLATE DATABASE_DEFAULT = q.oristamp
+                          WHERE q.tabela = @tabela
+                            AND NULLIF(LTRIM(RTRIM(q.ccusto)), '') IS NULL;";
+
+                    var pTabela = new SqlParameter("@tabela", "PO");
+                    _context.Database.SetCommandTimeout(60);
+                    await _context.Database.ExecuteSqlRawAsync(sql, pTabela);
+
+                    scope.Complete();
+                }
+                
+                _context.ChangeTracker.Clear();
+
+                var pagamentos = await _context.Set<U2bPaymentsQueue>()
+                    .AsNoTracking()
                     .Where(payment => payment.Estado == estado && payment.Canal == canal)
                     .GroupBy(payment => payment.BatchId)
                     .Select(group => new PaymentsQueue
@@ -110,7 +132,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         {
 
                             BatchId = group.Key.Trim(),
-                            Description = (group.First().Description == "") ? $"Transf. " : group.First().Description,
+                            Description = (group.First().TransactionDescription == "") ? $"Transf. " : group.First().TransactionDescription,
                             ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
                             DebitAccount = group.First().Origem,
                             initgPtyCode = GetAuxCamposEntityCode(group.First().Canal, group.First().Ccusto),
@@ -131,7 +153,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                             }).ToList()
                         }
                     })
-                    .ToList();
+                    .ToListAsync();
 
 
 
@@ -170,11 +192,24 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
         private static string? GetAuxCamposBatchBooking(string tabela, int provider)
         {
-            return provider == 106 ? tabela switch
+            return provider switch
             {
-                "TB" => "Salários",
-                _ => "Fornecedores"
-            } : null;
+                106 => tabela switch
+                {
+                    "TB" => "Salários",
+                    "PR" => "Salários",
+                    _ => "Fornecedores"
+                },
+                //0 – fornecedor, 1 salarios
+                107 => tabela switch
+                {
+                    "TB" => "1",
+                    "PR" => "1",
+                    _ => "0"
+                },
+                _ => null
+            };
+
         }
 
         private static string? GetAuxCamposEntityCode(int provider, string ccusto)
@@ -182,6 +217,9 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
             if (provider == 106)
             {
+                if (string.IsNullOrEmpty(ccusto))
+                    return "84d193aa-a6fc-4ada-b367-6b94449f3502";
+
                 string prefix = ccusto[..1];
 
                 return prefix switch

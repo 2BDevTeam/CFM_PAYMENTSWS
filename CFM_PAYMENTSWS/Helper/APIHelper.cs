@@ -13,7 +13,9 @@ namespace CFM_PAYMENTSWS.Helper
             return new PaymentCamelCase
             {
                 BatchId = payment.BatchId,
-                Description = payment.Description,
+                Description = payment.Description.Length > 40
+                    ? payment.Description[..40]
+                    : payment.Description,
                 ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-dd"),
                 DebitAccount = payment.DebitAccount,
                 initgPtyCode = payment.initgPtyCode,
@@ -23,7 +25,9 @@ namespace CFM_PAYMENTSWS.Helper
                     TransactionId = pr.TransactionId,
                     CreditAccount = pr.CreditAccount,
                     BeneficiaryName = pr.BeneficiaryName,
-                    TransactionDescription = pr.TransactionDescription,
+                    TransactionDescription = pr.TransactionDescription.Length > 40
+                        ? pr.TransactionDescription[..40]
+                        : pr.TransactionDescription,
                     Currency = pr.Currency,
                     Amount = pr.Amount,
                     BeneficiaryEmail = pr.BeneficiaryEmail
@@ -42,7 +46,7 @@ namespace CFM_PAYMENTSWS.Helper
                 ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-ddThh:mm:ss"),
                 DebitAccount = payment.DebitAccount,
                 initgPty_Code = payment.initgPtyCode,
-                BatchBooking = 0,
+                BatchBooking = int.Parse(payment.BatchBooking),
                 PaymentRecords = payment.PaymentRecords?.Select(pr => new PaymentRecords
                 {
                     TransactionId = pr.TransactionId,
@@ -51,7 +55,7 @@ namespace CFM_PAYMENTSWS.Helper
                     TransactionDescription = pr.TransactionDescription,
                     Currency = pr.Currency,
                     Amount = pr.Amount,
-                    BeneficiaryEmail = null
+                    BeneficiaryEmail = pr.BeneficiaryEmail
                 }).ToList()
             };
         }
