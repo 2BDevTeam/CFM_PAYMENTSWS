@@ -8,6 +8,7 @@ using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Org.BouncyCastle.Crypto;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Transactions;
@@ -93,18 +94,14 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             _context.SaveChanges();
         }
 
-        public async Task<List<PaymentsQueue>> GetPagamentQueue(string estado, decimal canal)
+        async Task UpdateCCusto()
         {
 
-            Debug.Print("Get Pagamento queue");
-            try
+            // 1) UPDATE prévio, fora de transacção ambiente
+            using (var scope = new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
             {
-
-                // 1) UPDATE prévio, fora de transacção ambiente
-                 using (var scope = new TransactionScope(TransactionScopeOption.Suppress, TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    const string sql =
-                        @"UPDATE q
+                const string sql =
+                    @"UPDATE q
                              SET q.ccusto = p.ccusto
                           FROM dbo.u_2b_paymentsQueue AS q
                           JOIN [nacala].[E14E105BD_CFM].dbo.po AS p
@@ -112,14 +109,23 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                           WHERE q.tabela = @tabela
                             AND NULLIF(LTRIM(RTRIM(q.ccusto)), '') IS NULL;";
 
-                    var pTabela = new SqlParameter("@tabela", "PO");
-                    _context.Database.SetCommandTimeout(60);
-                    await _context.Database.ExecuteSqlRawAsync(sql, pTabela);
+                var pTabela = new SqlParameter("@tabela", "PO");
+                _context.Database.SetCommandTimeout(60);
+                await _context.Database.ExecuteSqlRawAsync(sql, pTabela);
 
-                    scope.Complete();
-                }
-                
-                _context.ChangeTracker.Clear();
+                scope.Complete();
+            }
+            _context.ChangeTracker.Clear();
+
+        }
+
+        public async Task<List<PaymentsQueue>> GetPagamentQueue(string estado, decimal canal)
+        {
+
+            Debug.Print("Get Pagamento queue");
+            try
+            {
+                //await UpdateCCusto();
 
                 var pagamentos = await _context.Set<U2bPaymentsQueue>()
                     .AsNoTracking()
@@ -133,7 +139,8 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
                             BatchId = group.Key.Trim(),
                             Description = (group.First().TransactionDescription == "") ? $"Transf. " : group.First().TransactionDescription,
-                            ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
+                            //ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
+                            ProcessingDate = DateTime.Now,
                             DebitAccount = group.First().Origem,
                             initgPtyCode = GetAuxCamposEntityCode(group.First().Canal, group.First().Ccusto),
                             BatchBooking = GetAuxCamposBatchBooking(group.First().Tabela, group.First().Canal),

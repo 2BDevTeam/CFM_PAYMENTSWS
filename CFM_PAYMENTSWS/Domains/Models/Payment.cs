@@ -12,7 +12,7 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public DateTime ProcessingDate { get; set; }
         public string DebitAccount { get; set; }
         public string? initgPtyCode { get; set; } = null;
-        public string? BatchBooking { get; set; } = null;
+        public string BatchBooking { get; set; } = null;
         public List<PaymentRecords> PaymentRecords { get; set; }
         public override string ToString() => JsonConvert.SerializeObject(this);
     }

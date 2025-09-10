@@ -227,7 +227,7 @@ namespace CFM_PAYMENTSWS.Services
                 "DNF25081339161.417000001_1",
                 "DNF25081352576.652000002_1",
                 "DNF25081353369.858000002_1",
-                "DNF25081342632.428000002_1", "NFE25081945556.1843020_1"
+                "DNF25081342632.428000002_1", "NFE25081945556.1843020_1","DNF25081353369.8580000_1"
             };
             if (listas.Contains(paymentHeader.BatchId))
             {
@@ -359,9 +359,8 @@ namespace CFM_PAYMENTSWS.Services
                 BimAPI bimRepository = new BimAPI();
 
                 Paymentv1_5 paymentv1_5 = apiHelper.ConvertPaymentToV1_5(pagamento.payment);
-
+                Debug.Print($"paymentv1_5 {paymentv1_5}");
                 BimResponseDTO bimResponseDTO = new BimResponseDTO();
-
                 if (checkPayments)
                 {
                     //bciResponseDTO = bimRepository.checkPayments(pagamento.payment.BatchId, pagamento.payment.initgPtyCode ?? "");

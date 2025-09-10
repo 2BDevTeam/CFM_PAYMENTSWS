@@ -55,13 +55,13 @@ namespace CFM_PAYMENTSWS.Helper
                     TransactionDescription = pr.TransactionDescription,
                     Currency = pr.Currency,
                     Amount = pr.Amount,
-                    BeneficiaryEmail = pr.BeneficiaryEmail
+                    BeneficiaryEmail = int.Parse(payment.BatchBooking) == 1 ? null : pr.BeneficiaryEmail
                 }).ToList()
             };
         }
 
 
-        public API getApiEntity(string entity,string operationCode)
+        public API getApiEntity(string entity, string operationCode)
         {
             var configuration = new ConfigurationBuilder()
           .SetBasePath(Directory.GetCurrentDirectory())
@@ -72,20 +72,20 @@ namespace CFM_PAYMENTSWS.Helper
 
             var apiEntityData = configuracoes.Where(apiEntity => apiEntity.entity == entity).FirstOrDefault();
 
-            if(apiEntityData != null)
+            if (apiEntityData != null)
             {
 
                 var endpointData = apiEntityData.endpoints.Where(endpoint => endpoint.operationCode == operationCode);
 
-                if(endpointData != null)
+                if (endpointData != null)
                 {
                     apiEntityData.status = "1";
                     return apiEntityData;
 
                 }
 
-                return new API {status="0", message = "Não foi encontrado o endpoint com o código indicado para a respectiva entidade." };
-              
+                return new API { status = "0", message = "Não foi encontrado o endpoint com o código indicado para a respectiva entidade." };
+
 
             }
 
