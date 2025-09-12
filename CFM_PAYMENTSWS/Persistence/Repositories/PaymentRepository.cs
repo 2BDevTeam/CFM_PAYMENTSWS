@@ -125,7 +125,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             Debug.Print("Get Pagamento queue");
             try
             {
-                //await UpdateCCusto();
+                await UpdateCCusto();
 
                 var pagamentos = await _context.Set<U2bPaymentsQueue>()
                     .AsNoTracking()
@@ -142,7 +142,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                             //ProcessingDate = (DateTime)((group.First().ProcessingDate < DateTime.Now) ? DateTime.Now : group.First().ProcessingDate),
                             ProcessingDate = DateTime.Now,
                             DebitAccount = group.First().Origem,
-                            initgPtyCode = GetAuxCamposEntityCode(group.First().Canal, group.First().Ccusto),
+                            initgPtyCode = GetAuxCamposEntityCode(group.First().Canal, group.First().Ccusto, group.First().Oristamp),
                             BatchBooking = GetAuxCamposBatchBooking(group.First().Tabela, group.First().Canal),
                             PaymentRecords = group.Select(paymentRecord => new PaymentRecords
                             {
@@ -219,14 +219,23 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
         }
 
-        private static string? GetAuxCamposEntityCode(int provider, string ccusto)
+        private string? GetAuxCamposEntityCode(int provider, string ccusto, string? oristamp)
         {
 
             if (provider == 106)
             {
                 if (string.IsNullOrEmpty(ccusto))
-                    return "84d193aa-a6fc-4ada-b367-6b94449f3502";
+                {
+                    // Try to fetch the cost center from the PO table using the origin stamp
+                    ccusto = _context.Set<Po>()
+                        .AsNoTracking()
+                        .Where(p => p.Postamp == oristamp)
+                        .Select(p => p.Ccusto)
+                        .FirstOrDefault() ?? string.Empty;
 
+                    if (string.IsNullOrEmpty(ccusto))
+                        return "84d193aa-a6fc-4ada-b367-6b94449f3502";
+                }
                 string prefix = ccusto[..1];
 
                 return prefix switch

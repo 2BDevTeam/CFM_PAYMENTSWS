@@ -5,26 +5,27 @@ using CFM_PAYMENTSWS.Domains.Models;
 using CFM_PAYMENTSWS.DTOs;
 using CFM_PAYMENTSWS.Extensions;
 using CFM_PAYMENTSWS.Helper;
+using CFM_PAYMENTSWS.Mappers;
 using CFM_PAYMENTSWS.Persistence.Contexts;
 using CFM_PAYMENTSWS.Providers;
+using CFM_PAYMENTSWS.Providers.BCI.DTOs;
+using CFM_PAYMENTSWS.Providers.BCI.Repository;
+using CFM_PAYMENTSWS.Providers.Bim.DTOs;
+using CFM_PAYMENTSWS.Providers.Bim.Repository;
+using CFM_PAYMENTSWS.Providers.Mpesa;
+using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
+using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
+using Hangfire;
+using Hangfire.States;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using MPesa;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Globalization;
-using System.Xml.Linq;
-using Microsoft.EntityFrameworkCore.Storage;
-using CFM_PAYMENTSWS.Mappers;
-using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
-using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
 using System.Threading.Tasks.Dataflow;
-using MPesa;
-using CFM_PAYMENTSWS.Providers.Mpesa;
-using CFM_PAYMENTSWS.Providers.BCI.Repository;
-using CFM_PAYMENTSWS.Providers.BCI.DTOs;
-using Hangfire.States;
-using CFM_PAYMENTSWS.Providers.Bim.Repository;
-using CFM_PAYMENTSWS.Providers.Bim.DTOs;
+using System.Xml.Linq;
 
 namespace CFM_PAYMENTSWS.Services
 {
@@ -92,6 +93,7 @@ namespace CFM_PAYMENTSWS.Services
         }
 
 
+
         public async Task ProcessarPagamentosAsync()
         {
             string lockKey = "processarPagamentos";
@@ -131,6 +133,7 @@ namespace CFM_PAYMENTSWS.Services
                         case 107:
                             pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 107);
                             await BimProcessing(pagamentos, false);
+                            //ScheduleUpdatePayments(pagamentos);
                             break;
 
                         default:
@@ -155,6 +158,30 @@ namespace CFM_PAYMENTSWS.Services
         }
 
 
+        void ScheduleUpdatePayments(IEnumerable<PaymentsQueue> pagamentos)
+        {
+            foreach (var pagamento in pagamentos)
+            {
+                Random random = new Random();
+
+                var dto = new PaymentCheckedDTO
+                {
+                    BatchId = pagamento.payment.BatchId,
+                    ProcessingDate = pagamento.payment.ProcessingDate.ToString("yyyy-MM-dd"),
+                    StatusCode = "0000",
+                    StatusDescription = "Pagamento processado com sucesso.",
+                    PaymentCheckedRecords = pagamento.payment.PaymentRecords.Select(pr => new PaymentCheckedRecordsDTO
+                    {
+                        TransactionId = pr.TransactionId,
+                        BankReference = "2025_" + random.Next(100000, 999999).ToString(),
+                        StatusCode = "0000",
+                        StatusDescription = "Pagamento processado com sucesso."
+                    }).ToList()
+                };
+
+                BackgroundJob.Schedule(() => actualizarPagamentos(dto), TimeSpan.FromSeconds(20));
+            }
+        }
         public async Task VerificarPagamentos()
         {
             string lockKey = "verificarPagamentos";
@@ -385,7 +412,7 @@ namespace CFM_PAYMENTSWS.Services
                 switch (bimResponse.response.cod)
                 {
 
-                    case "0" or "0000" or "0011":
+                    case "0" or "0000" or "0011" or "0404":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + bimResponse.response.codDesc);
                         break;
@@ -744,6 +771,7 @@ namespace CFM_PAYMENTSWS.Services
                     po.URefbanco = pagamento.BankReference;
                     po.Dvalor = processingDate;
                     //po.Tbcheque = pagamento.BankReference;
+                    po.Adoc = Truncar(pagamento.BankReference, 20);
 
                     break;
 
@@ -754,6 +782,7 @@ namespace CFM_PAYMENTSWS.Services
                     pd.URefbanco = pagamento.BankReference;
                     pd.Rdata = processingDate;
                     //pd.Cheque = pagamento.BankReference.ToString();
+                    pd.Adoc = pagamento.BankReference;
 
                     break;
 
@@ -789,6 +818,12 @@ namespace CFM_PAYMENTSWS.Services
             _genericPaymentRepository.SaveChanges();
             _genericPHCRepository.SaveChanges();
 
+        }
+
+        private static string Truncar(string? s, int max)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+            return s.Length <= max ? s : s.Substring(0, max);
         }
 
         DateTime ParseProcessingDate(string processingDateString)
