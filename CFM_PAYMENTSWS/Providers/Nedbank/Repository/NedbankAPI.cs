@@ -27,7 +27,12 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
                 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
-                    string json = JsonConvert.SerializeObject(payment);
+                    string json = JsonConvert.SerializeObject(payment,
+                        new JsonSerializerSettings
+                        {
+                            DateFormatString = "yyyy-MM-ddTHH:mm:ss",
+                            DateTimeZoneHandling = DateTimeZoneHandling.Unspecified
+                        });
 
                     Debug.Print($"loadPayments {json} ");
 

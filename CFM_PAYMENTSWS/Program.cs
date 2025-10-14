@@ -53,6 +53,7 @@ builder.Services.AddScoped<IGenericRepository<AppDbContext>, GenericRepository<A
 builder.Services.AddScoped<IGenericRepository<PHCDbContext>, GenericRepository<PHCDbContext>>();
 builder.Services.AddScoped<IPHCRepository<PHCDbContext>, PHCRepository<PHCDbContext>>();
 builder.Services.AddScoped<IPaymentRepository<AppDbContext>, PaymentRepository<AppDbContext>>();
+
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 

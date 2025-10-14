@@ -15,7 +15,7 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public string Usrinis { get; set; } = null!;
         public DateTime Usrdata { get; set; }
         public string Usrhora { get; set; } = null!;
-        public DateTime? Ousrdata { get; set; }
+        public DateTime Ousrdata { get; set; }
         public string? Ousrinis { get; set; }
         public string? Ousrhora { get; set; }
         public bool Marcada { get; set; }
