@@ -129,7 +129,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
                 var pagamentos = await _context.Set<U2bPaymentsQueue>()
                     .AsNoTracking()
-                    .Where(payment => payment.Estado == estado && payment.Canal == canal)
+                    .Where(payment => payment.Estado == estado && payment.Canal == canal && payment.Ccusto.Trim() != "")
                     .GroupBy(payment => payment.BatchId)
                     .Select(group => new PaymentsQueue
                     {
@@ -219,20 +219,13 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
         }
 
-        private string? GetAuxCamposEntityCode(int provider, string ccusto, string? oristamp)
+        private static string? GetAuxCamposEntityCode(int provider, string ccusto, string? oristamp)
         {
 
             if (provider == 106)
             {
                 if (string.IsNullOrEmpty(ccusto))
                 {
-                    // Try to fetch the cost center from the PO table using the origin stamp
-                    ccusto = _context.Set<Po>()
-                        .AsNoTracking()
-                        .Where(p => p.Postamp == oristamp)
-                        .Select(p => p.Ccusto)
-                        .FirstOrDefault() ?? string.Empty;
-
                     if (string.IsNullOrEmpty(ccusto))
                         return "84d193aa-a6fc-4ada-b367-6b94449f3502";
                 }

@@ -248,12 +248,12 @@ namespace CFM_PAYMENTSWS.Services
             //
             List<string> listas = new List<string>
             {
-                "DNF25091162734.4000000_1",
+                "im225102157370704000002","MLQ25100264923.949469947","DNF25081352576.6520000_1",
                 "DNF25091159551.2890000_1",
                 "DNF25091146226.0610000_2",
-                "DNF25081339161.417000001_1",
-                "DNF25081352576.652000002_1",
-                "DNF25081353369.858000002_1",
+                "DNF25081339161.417000001_1","DNF25081352913.6760000_1",
+                "DNF25081352576.652000002_1","DNF25081339161.4170000_1",
+                "DNF25081353369.858000002_1","DNF25081342632.4280000_1",
                 "DNF25081342632.428000002_1", "NFE25081945556.1843020_1","DNF25081353369.8580000_1",
             };
             if (listas.Contains(paymentHeader.BatchId))
@@ -447,7 +447,11 @@ namespace CFM_PAYMENTSWS.Services
 
                 PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase(pagamento.payment);
 
+                Debug.Print($"paymentCamel {paymentCamel}");
+
+                return;
                 BCIResponseDTO bciResponseDTO = new BCIResponseDTO();
+
 
                 if (checkPayments)
                 {
@@ -457,6 +461,7 @@ namespace CFM_PAYMENTSWS.Services
                 {
                     bciResponseDTO = bciRepository.loadPayments(paymentCamel);
                 }
+
 
 
                 ResponseDTO bciResponse = routeMapper.mapLoadPaymentResponse(106, bciResponseDTO);
