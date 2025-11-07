@@ -12,6 +12,8 @@ using CFM_PAYMENTSWS.Providers.BCI.DTOs;
 using CFM_PAYMENTSWS.Providers.BCI.Repository;
 using CFM_PAYMENTSWS.Providers.Bim.DTOs;
 using CFM_PAYMENTSWS.Providers.Bim.Repository;
+using CFM_PAYMENTSWS.Providers.FCB.DTOs;
+using CFM_PAYMENTSWS.Providers.FCB.Repository;
 using CFM_PAYMENTSWS.Providers.Mpesa;
 using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
@@ -134,6 +136,11 @@ namespace CFM_PAYMENTSWS.Services
                             pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 107);
                             await BimProcessing(pagamentos, false);
                             //ScheduleUpdatePayments(pagamentos);
+                            break;
+
+                        case 108:
+                            pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 108);
+                            await FcbProcessing(pagamentos);
                             break;
 
                         default:
@@ -433,6 +440,42 @@ namespace CFM_PAYMENTSWS.Services
 
             }
 
+        }
+
+        async Task FcbProcessing(List<PaymentsQueue> pagamentos)
+        {
+            foreach (var pagamento in pagamentos)
+            {
+                try
+                {
+                    FcbAPI fcbRepository = new FcbAPI();
+                    FcbPaymentDTO fcbPayment = apiHelper.ConvertPaymentToFcb(pagamento.payment);
+                    FcbResponseDTO fcbResponseDTO = await fcbRepository.LoadPaymentsAsync(fcbPayment);
+
+                    ResponseDTO fcbResponse = routeMapper.mapLoadPaymentResponse(108, fcbResponseDTO);
+
+                    insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, fcbResponse.response.cod, fcbResponse.response.codDesc, "", "");
+
+                    switch (fcbResponse.response.cod)
+                    {
+                        case "0000":
+                            actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
+                            break;
+
+                        default:
+                            actualizarEstadoDoPagamento(pagamento, "Por corrigir", fcbResponse.response.codDesc);
+                            break;
+                    }
+
+                    logHelper.generateLogJB(fcbResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - FCB", pagamento.payment);
+                }
+                catch (Exception ex)
+                {
+                    var response = new ResponseDTO(new ResponseCodesDTO("0007", "Erro no processamento com o FCB"), ex.Message, null);
+                    actualizarEstadoDoPagamento(pagamento, "Por corrigir", ex.Message);
+                    logHelper.generateLogJB(response, pagamento.payment.BatchId, "PaymentService.processarPagamento - FCB", pagamento.payment);
+                }
+            }
         }
 
 

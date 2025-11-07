@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 ﻿using CFM_PAYMENTSWS.Domains.Models;
 using CFM_PAYMENTSWS.DTOs;
+using CFM_PAYMENTSWS.Providers.FCB.DTOs;
 
 namespace CFM_PAYMENTSWS.Helper
 {
@@ -57,6 +59,35 @@ namespace CFM_PAYMENTSWS.Helper
                     Amount = pr.Amount,
                     BeneficiaryEmail = int.Parse(payment.BatchBooking) == 1 ? null : pr.BeneficiaryEmail
                 }).ToList()
+            };
+        }
+
+        public FcbPaymentDTO ConvertPaymentToFcb(Payment payment)
+        {
+            if (payment == null) throw new ArgumentNullException(nameof(payment));
+
+            return new FcbPaymentDTO
+            {
+                BatchId = payment.BatchId,
+                Description = payment.Description.Length > 140
+                    ? payment.Description[..140]
+                    : payment.Description,
+                ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-ddTHH:mm:ss.fff"),
+                DebitAccount = payment.DebitAccount,
+                InitgPtyCode = string.IsNullOrWhiteSpace(payment.initgPtyCode) ? "CFM" : payment.initgPtyCode,
+                BatchBooking = string.IsNullOrWhiteSpace(payment.BatchBooking) ? "SUPPLIERS" : payment.BatchBooking,
+                PaymentRecords = payment.PaymentRecords?.Select(pr => new FcbPaymentRecordDTO
+                {
+                    TransactionId = pr.TransactionId,
+                    CreditAccount = pr.CreditAccount,
+                    BeneficiaryName = pr.BeneficiaryName,
+                    TransactionDescription = pr.TransactionDescription.Length > 140
+                        ? pr.TransactionDescription[..140]
+                        : pr.TransactionDescription,
+                    Currency = pr.Currency,
+                    Amount = pr.Amount,
+                    BeneficiaryEmail = string.IsNullOrWhiteSpace(pr.BeneficiaryEmail) ? null : pr.BeneficiaryEmail
+                }).ToList() ?? new List<FcbPaymentRecordDTO>()
             };
         }
 
