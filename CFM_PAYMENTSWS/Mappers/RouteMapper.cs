@@ -3,6 +3,7 @@ using CFM_PAYMENTSWS.DTOs;
 using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using CFM_PAYMENTSWS.Providers.BCI.DTOs;
 using CFM_PAYMENTSWS.Providers.Bim.DTOs;
+using CFM_PAYMENTSWS.Providers.FCB.DTOs;
 
 namespace CFM_PAYMENTSWS.Mappers
 {
@@ -32,6 +33,11 @@ namespace CFM_PAYMENTSWS.Mappers
                     var bimMapper = new BimMapper();
                     BimResponseDTO bimResponse = (BimResponseDTO)response;
                     return bimMapper.mapBimLoadPayments(bimResponse);
+
+                case 108:
+                    var fcbMapper = new FcbMapper();
+                    FcbResponseDTO fcbResponse = (FcbResponseDTO)response;
+                    return fcbMapper.MapFcbLoadPayments(fcbResponse);
 
                 default:
                      throw new Exception("INVALID_PROVIDER_CODE_ON_MAP_PROVIDER_RESPONSE");
