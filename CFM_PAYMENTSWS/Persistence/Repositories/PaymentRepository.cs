@@ -128,7 +128,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             Debug.Print("Get Pagamento queue");
             try
             {
-                await UpdateCCusto();
+                //await UpdateCCusto();
 
 
                 var baseQuery = _context.Set<U2bPaymentsQueue>()
@@ -136,11 +136,13 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                     .Where(p => p.Estado == estado && p.Canal == canal);
 
                 var candidatos = await baseQuery.ToListAsync();
+                Debug.Print($"Candidatos encontrados: {candidatos.Count}");
 
                 DateTime Agora = DateTime.UtcNow;
                 var pagamentos = candidatos
                     .Where(p =>
                     {
+                        
                         if (!TimeSpan.TryParse(p.Ousrhora, out var hora)) return false;
                         var data = p.Ousrdata.Date;
 
@@ -151,6 +153,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         if (instante > Agora) instante = instante.AddDays(-1);
 
                         return (Agora - instante).TotalMinutes >= 6;
+                        
                     })
                     .GroupBy(payment => payment.BatchId)
                     .Select(group => new PaymentsQueue

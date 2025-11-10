@@ -444,12 +444,14 @@ namespace CFM_PAYMENTSWS.Services
 
         async Task FcbProcessing(List<PaymentsQueue> pagamentos)
         {
+
             foreach (var pagamento in pagamentos)
             {
                 try
                 {
                     FcbAPI fcbRepository = new FcbAPI();
                     FcbPaymentDTO fcbPayment = apiHelper.ConvertPaymentToFcb(pagamento.payment);
+                    Debug.Print($"FCB {JsonConvert.SerializeObject(fcbPayment)}");
                     FcbResponseDTO fcbResponseDTO = await fcbRepository.LoadPaymentsAsync(fcbPayment);
 
                     ResponseDTO fcbResponse = routeMapper.mapLoadPaymentResponse(108, fcbResponseDTO);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -38,6 +39,7 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
                     var jsonObject = JObject.Parse(payment.ToString());
                     RemoveNullProperties(jsonObject);
                     var cleanedJson = jsonObject.ToString(Formatting.None);
+                    Debug.Print($"LoadPaymentsAsync  {cleanedJson}");
                     await streamWriter.WriteAsync(cleanedJson);
                     await streamWriter.FlushAsync();
                 }

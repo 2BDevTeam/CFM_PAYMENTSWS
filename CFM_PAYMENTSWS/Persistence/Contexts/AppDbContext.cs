@@ -386,7 +386,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                 entity.Property(e => e.Canal).HasColumnName("canal");
 
                 entity.Property(e => e.Descricao)
-                    .HasMaxLength(50)
+                    .HasMaxLength(500)
                     .IsUnicode(false)
                     .HasColumnName("descricao")
                     .HasDefaultValueSql("('')");
@@ -586,7 +586,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasDefaultValueSql("('')");
 
                 entity.Property(e => e.StatusDescriptionHs)
-                    .HasMaxLength(100)
+                    .HasMaxLength(500)
                     .IsUnicode(false)
                     .HasColumnName("statusDescriptionHs")
                     .HasDefaultValueSql("('')");
