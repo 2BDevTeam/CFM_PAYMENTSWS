@@ -20,5 +20,17 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
         public List<Liame> GetLiameProcessado(bool processado);
         public List<UWspayments> GetWspayments(string batchid);
         public UWspayments GetWspaymentsByDestino(string batchid, string destino);
+
+        Task<Ft?> GetFtByRef(string no);
+        Task<Cl> getClienteByNo(decimal no);
+        Task<List<Cc>> getContaCorrenteByStamp(string stamp);
+
+        decimal getMaxRecibo();
+        void addRecibo(Re recibocc);
+        void addLinhasRecibo(Rl linhasRecibo);
+
+        Tsre getConfiguracaoRecibo();
+        string getMoeda();
+
     }
 }

@@ -51,7 +51,7 @@ namespace CFM_PAYMENTSWS.Controllers
 
 
     //CFM_PAYMENTSWS V1 documentado a partir da Descrição técnica V1.61
-    [Authorize]
+    //[Authorize]
     [Route("api/payment/v1")]
     [ApiController]
     public class CFM_PAYMENTSWSV1Controller : ControllerBase
@@ -78,6 +78,17 @@ namespace CFM_PAYMENTSWS.Controllers
 
             return Ok(responseSmallDTO);
         }
+
+
+
+        [HttpPost]
+        [Route("enviarPagamentos")]
+        public async Task<ActionResult<List<RespostaDTO>>> GetPayment([FromBody] List<PaymentDynamicDTO> payments)
+        {
+            var result = await _paymentService.InsertPayments(payments);
+            return Ok(result);
+        }
+
 
     }
 

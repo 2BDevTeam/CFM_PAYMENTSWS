@@ -1,4 +1,5 @@
-﻿using CFM_PAYMENTSWS.Domains.Interface;
+﻿using CFM_PAYMENTSWS.Domains.Contracts;
+using CFM_PAYMENTSWS.Domains.Interface;
 using CFM_PAYMENTSWS.Domains.Models;
 using CFM_PAYMENTSWS.DTOs;
 using CFM_PAYMENTSWS.Extensions;
@@ -142,7 +143,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 var pagamentos = candidatos
                     .Where(p =>
                     {
-                        
+
                         if (!TimeSpan.TryParse(p.Ousrhora, out var hora)) return false;
                         var data = p.Ousrdata.Date;
 
@@ -153,7 +154,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         if (instante > Agora) instante = instante.AddDays(-1);
 
                         return (Agora - instante).TotalMinutes >= 6;
-                        
+
                     })
                     .GroupBy(payment => payment.BatchId)
                     .Select(group => new PaymentsQueue
@@ -179,7 +180,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                                 TransactionId = encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp),
                                 CreditAccount = encryptionHelper.DecryptText(paymentRecord.Destino, paymentRecord.Keystamp),
                                 BeneficiaryEmail = string.IsNullOrEmpty(encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp))
-                                                        ? "NA"
+                                                        ? ""
                                                         : FormatSpecialChars(encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp))
 
                             }).ToList()
@@ -352,7 +353,29 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                           .ToList();
         }
 
+        public async Task<bool> PaymentExistsAsync(U2bRecPayments payment)
+        {
+            return await _context.Set<U2bRecPayments>()
+                .AnyAsync(p => p.IdPagamento == payment.IdPagamento && p.Entidade == payment.Entidade);
+        }
 
+        public async Task AddPayment(U2bRecPayments payment)
+        {
+            _context.Set<U2bRecPayments>().Add(payment);
+            await _context.SaveChangesAsync();
+        }
+
+        public List<U2bRecPayments> GetPendingTransactions()
+        {
+            return _context.Set<U2bRecPayments>().Where(trans => trans.StatusCode == "1001").ToList();
+        }
+
+        public void updateTransactionStatus(U2bRecPayments transacaoActualizar)
+        {
+            transacaoActualizar.StatusCode = WebTransactionCodes.SUCCESSPAYMENT.cod;
+            transacaoActualizar.StatusDescription = WebTransactionCodes.SUCCESSPAYMENT.codDesc;
+            //transacaoActualizar.message = WebTransactionCodes.SUCCESSPAYMENT.codDesc;
+        }
 
 
     }

@@ -121,14 +121,65 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 .FirstOrDefault();
         }
 
-        /*
-        public Ft2 GetFt2(string ft2stamp)
+        public async Task<Ft?> GetFtByRef(string no)
         {
-            return _context.Set<Ft2>().
-                FirstOrDefault(ft => ft.Ft2stamp == ft2stamp);
+            var queryFT = from ft in _context.Set<Ft>()
+                          join ft2 in _context.Set<Ft2>() on ft.Ftstamp equals ft2.Ft2stamp
+                          where ft2.URefps2 == no.Trim()
+                          select ft;
+
+            return await queryFT.FirstOrDefaultAsync();
         }
 
-        */
+        public async Task<Cl> getClienteByNo(decimal no)
+        {
+            return await _context.Set<Cl>().Where(cl => cl.No == no).FirstOrDefaultAsync();
+        }
+        public async Task<List<Cc>> getContaCorrenteByStamp(string stamp)
+        {
+            return await _context.Set<Cc>()
+                .Where(cc => cc.Ccstamp == stamp).ToListAsync();
+        }
+
+        public decimal getMaxRecibo()
+        {
+            var config = getConfiguracaoRecibo();
+
+            var rno = _context.Set<Re>()
+                                .Where(re => re.Ndoc == config.Ndoc && re.Reano == DateTime.Now.Year)
+                                .Select(re => re.Rno)
+                                .ToList()
+                                .DefaultIfEmpty(0)
+                                .Max() + 1;
+
+            return rno;
+        }
+
+        public Tsre getConfiguracaoRecibo()
+        {
+            return _context.Set<Tsre>().Where(tsre => tsre.UOnlinep == true).FirstOrDefault();
+        }
+
+
+        public void addRecibo(Re recibocc)
+        {
+            _context.Set<Re>().Add(recibocc);
+        }
+
+        public void addLinhasRecibo(Rl linhasRecibo)
+        {
+            _context.Set<Rl>().Add(linhasRecibo);
+        }
+
+        public string getMoeda()
+        {
+            return _context.Set<Para1>().Where(para1 => para1.Descricao == "ge_pte").FirstOrDefault().Valor;
+
+        }
+
+
+
+
 
     }
 }

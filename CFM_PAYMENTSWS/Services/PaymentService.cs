@@ -1,12 +1,17 @@
 ﻿//using Microsoft.Data.SqlClient.Server;
+using CFM_PAYMENTSWS.Domains.Contracts;
+using CFM_PAYMENTSWS.Domains.Exceptions;
 using CFM_PAYMENTSWS.Domains.Interface;
 using CFM_PAYMENTSWS.Domains.Interfaces;
 using CFM_PAYMENTSWS.Domains.Models;
+using CFM_PAYMENTSWS.Domains.Models;
+using CFM_PAYMENTSWS.Domains.Models.Enum;
 using CFM_PAYMENTSWS.DTOs;
 using CFM_PAYMENTSWS.Extensions;
 using CFM_PAYMENTSWS.Helper;
 using CFM_PAYMENTSWS.Mappers;
 using CFM_PAYMENTSWS.Persistence.Contexts;
+using CFM_PAYMENTSWS.Persistence.Repositories;
 using CFM_PAYMENTSWS.Providers;
 using CFM_PAYMENTSWS.Providers.BCI.DTOs;
 using CFM_PAYMENTSWS.Providers.BCI.Repository;
@@ -20,6 +25,7 @@ using CFM_PAYMENTSWS.Providers.Nedbank.Repository;
 using Hangfire;
 using Hangfire.States;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using MPesa;
@@ -62,6 +68,7 @@ namespace CFM_PAYMENTSWS.Services
 
         }
 
+        #region Job Locking
 
         public async Task<bool> VerificarJobActivos(string lockKey)
         {
@@ -93,6 +100,416 @@ namespace CFM_PAYMENTSWS.Services
             _genericPHCRepository.Delete(jobLock);
             _genericPHCRepository.SaveChanges();
         }
+
+        #endregion
+
+
+        #region Funções de Recebimentos
+
+
+        public async Task<List<RespostaDTO>> InsertPayments(List<PaymentDynamicDTO> lstPaymentsDTO)
+        {
+            List<RespostaDTO> lstRespostas = new List<RespostaDTO>();
+
+            try
+            {
+                List<U2bRecPayments> payments = ConvertToPayment(lstPaymentsDTO);
+
+                foreach (var payment in payments)
+                {
+                    try
+                    {
+
+                        string refPagSemCheck = payment.Referencia[..^2];
+                        string aux = payment.Entidade + refPagSemCheck + (Math.Round(payment.Valor, 2) * 100).ToString("F0");
+                        string refClienteValida = apiHelper.CalcularReferenciaComCheckDigit(aux, refPagSemCheck);
+
+                        if (refClienteValida != payment.Referencia)
+                        {
+                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.INVALIDREFERENCE, payment.Entidade.ToString(), payment.IdPagamento));
+                            continue;
+                        }
+
+                        bool duplicated = await _paymentRespository.PaymentExistsAsync(payment);
+                        if (duplicated)
+                        {
+                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.DUPLICATEDPAYMENT, payment.IdPagamento));
+                            continue;
+                        }
+
+                        //Adicionar Pagamento
+                        await _paymentRespository.AddPayment(payment);
+                        lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.SUCCESS, payment.IdPagamento));
+                    }
+                    catch (Exception paymentEx)
+                    {
+                        Debug.Print($"  {paymentEx.Message}");
+                        //_logger.LogError(paymentEx, $"Error processing payment {payment.IdPagamento}");
+                        lstRespostas.Add(new RespostaDTO(
+                            payment.IdPagamento,
+                            WebTransactionCodes.ERROR,
+                            paymentEx.Message
+                        ));
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+
+            return lstRespostas;
+        }
+
+        private List<U2bRecPayments> ConvertToPayment(List<PaymentDynamicDTO> paymentDTOs)
+        {
+            List<U2bRecPayments> paymentList = new List<U2bRecPayments>();
+
+            foreach (var paymentDTO in paymentDTOs)
+            {
+                U2bRecPayments payment = new U2bRecPayments
+                {
+                    U2bRecPaymentsStamp = Guid.NewGuid().ToString().Substring(0, 24),
+                    IdPagamento = paymentDTO.PaymentId,
+                    Entidade = paymentDTO.Entity,
+                    Referencia = paymentDTO.CustomerRef,
+                    Valor = paymentDTO.Amount,
+                    Data = paymentDTO.Date,
+                    Metodo = paymentDTO.Method,
+                    Provider = "Prov1",
+                    Moeda = paymentDTO.Currency,
+                    Descricao = paymentDTO.Description ?? "",
+                    StatusCode = WebTransactionCodes.PENDINGBATCH.cod,
+                    StatusDescription = WebTransactionCodes.PENDINGBATCH.codDesc,
+                    Ousrinis = "CFM_Payments",
+                    Usrinis = "CFM_Payments",
+                };
+
+                paymentList.Add(payment);
+            }
+
+            return paymentList;
+        }
+
+        public async Task ProcessarRecebimentosAsync()
+        {
+            string lockKey = "processarRecebimentos";
+
+            if (await VerificarJobActivos(lockKey))
+                return;
+
+            try
+            {
+
+                List<U2bRecPayments> transacoesPENDINGs = _paymentRespository.GetPendingTransactions();
+
+                Debug.Print($"PagamentoService.processarRecibos.TOTALPAGAMENTOS: {transacoesPENDINGs.Count}");
+
+                foreach (U2bRecPayments transacao in transacoesPENDINGs)
+                {
+                    Debug.Print("Referência :" + transacao.Referencia);
+                    var resp = await processarReciboFt(transacao);
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
+                var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
+                logHelper.generateLogJB(response, "ProcessarRecebimentos" + Guid.NewGuid(), "PaymentService.ProcessarRecebimentosAsync", ex.Message);
+            }
+            finally
+            {
+                TerminarJob(lockKey);
+            }
+        }
+
+        public async Task<ResponseDTO> processarReciboFt(U2bRecPayments u2bpayments)
+        {
+            List<ReciboAux> recibos = new();
+            try
+            {
+                string restamp = "";
+                string rdstamp = "";
+
+                Debug.Print($"u2bpayments.Ref {u2bpayments.Referencia} ");
+
+                Ft ft = await _phcRepository.GetFtByRef(u2bpayments.Referencia);
+                Cl cl = await _phcRepository.getClienteByNo(ft.No);
+
+                List<Cc> contacorrente = new List<Cc>();
+                contacorrente = await _phcRepository.getContaCorrenteByStamp(ft.Ftstamp);
+
+                Debug.Print("Nº do cliente " + cl.No.ToString());
+                Debug.Print($"Conta corrente: {JsonConvert.SerializeObject(contacorrente)}");
+
+                decimal saldo = 0;
+                decimal pagamentoVal = u2bpayments.Valor;
+
+                if (contacorrente.Any())
+                    saldo = contacorrente.Sum(cc => (cc.Deb - cc.Debf));
+
+                Debug.Print("COUNT DO CC " + contacorrente.Count().ToString());
+                if (pagamentoVal <= saldo)
+                {
+                    Debug.Print(" APENAS CRIA RECIBO CC");
+                    criarReciboCC(cl,
+                                    pagamentoVal,
+                                    recibos,
+                                    contacorrente,
+                                    u2bpayments
+                                    );
+                }
+                else
+                {
+                    throw new Exception("Saldo insuficiente para processar o pagamento.");
+                }
+                /*
+                else if (pagamentoVal > saldo)
+                {
+                    if (saldo == 0)
+                    {
+                        Debug.Print(" APENAS CRIA ADIANDAMENTO");
+
+                        criarReciboAdiantamento(cl,
+                                    pagamentoVal,
+                                    recibos,
+                                    u2bpayments
+                                     );
+
+                    }
+                    else
+                    {
+
+                        Debug.Print("  CRIA ADIANDAMENTO E RECIBO CC");
+
+                        criarReciboCC(cl,
+                                    saldo,
+                                    recibos,
+                                    contacorrente,
+                                    u2bpayments
+
+                                    );
+
+                        criarReciboAdiantamento(cl,
+                                    pagamentoVal - saldo,
+                                    recibos,
+                                    u2bpayments
+                                    );
+
+                    }
+                }
+                */
+
+
+                _paymentRespository.updateTransactionStatus(u2bpayments);
+
+                ResponseDTO saveChangesresponse = await _genericPHCRepository.SaveChangesRespDTO();
+
+                Debug.Print("Facturacao Save Changes Result " + saveChangesresponse.ToString());
+
+                if (saveChangesresponse.response.cod != "0000")
+                    throw new GeneralException(saveChangesresponse);
+
+                var reciboResult = new PagamentoResultDTO(recibos, contacorrente);
+
+                ResponseDTO response = new ResponseDTO(WebTransactionCodes.SUCCESS, reciboResult, u2bpayments);
+
+                List<ReciboAux> recibosCriados = reciboResult.recibos;
+
+                Debug.Print("PagamentoService.processarCobrancas.RECIBOS: " + JsonConvert.SerializeObject(recibosCriados));
+
+                return response;
+
+            }
+            catch (Exception ex)
+            {
+                // 3) Nunca aceder ex.InnerException sem null-check
+                var stack = ex.StackTrace ?? "";
+                var deep = DeepMessage(ex); // inclui tipo(s) e SqlNumber se existir
+
+                /*
+                var transact = new U2bPayments(
+                    transactionID: u2bpayments?.transactionID?.ToString(),
+                    @ref: u2bpayments?.Referencia,
+                    date: u2bpayments?.Data ?? DateTime.Now,
+                    amount: u2bpayments?.Valor ?? 0m,
+                    entity: u2bpayments?.Entidade ?? 0,
+                    status: "ERRO",
+                    message: deep,
+                    codigo: ex.GetType().Name
+                );
+                await _transactionRepository.AddU2bPayments(transact);
+                */
+                var safeMsg = $"Exceção gerada no pagamento CFM: {deep}. Em {stack}";
+                var response = new ResponseDTO(WebTransactionCodes.INTERNALERROR, safeMsg, u2bpayments);
+
+                Debug.Print("PagamentoService.getRecibosAsync.INTERNALERROR: " + deep);
+                //logHelper.generateLogJB(response, "", "PagamentoService.getRecibosAsync.INTERNALERROR:");
+
+                return response;
+            }
+        }
+
+        public void criarReciboCC(Cl cl, decimal pagamento, List<ReciboAux> recibos, List<Cc> contacorrente, U2bRecPayments u2BPayments)
+        {
+            DateTime data = u2BPayments.Data;
+            var stamp = KeysExtension.UseThisSizeForStamp(25);
+            string restamp = stamp;
+            var rno = _phcRepository.getMaxRecibo();
+
+            var config = _phcRepository.getConfiguracaoRecibo();
+            Debug.Print("Configs" + config.ToString());
+            Re re = new Re(
+                    restamp: stamp,
+                    ccusto: cl.Ccusto,
+                    chdata: data == default ? DateTime.Now.Date : data.Date,
+                    contado: 0,
+                    //contado: config.UNoconta,
+                    etotal: pagamento,
+                    etotow: 0,
+                    fref: cl.Fref,
+                    local: cl.Local,
+                    memissao: "PTE",
+                    morada: cl.Morada,
+                    ncont: cl.Ncont,
+                    ndoc: config.Ndoc,
+                    nmdoc: config.Nmdoc,
+                    no: cl.No,
+                    nome: cl.Nome,
+                    olcodigo: "R00002",
+                    ollocal: "",
+                    //ollocal: config.UDnoconta,
+                    ousrdata: DateTime.Now.Date,
+                    usrdata: DateTime.Now.Date,
+                    ousrhora: DateTime.Now.ToString("HH:MM:SS"),
+                    usrhora: DateTime.Now.ToString("HH:MM:SS"),
+                    ousrinis: "FIPAGONLINEPAYMENTSAPI",
+                    usrinis: "FIPAGONLINEPAYMENTSAPI",
+                    process: true,
+                    rdata: data == default ? DateTime.Now.Date : data.Date,
+                    reano: data == default ? DateTime.Now.Year : data.Year,
+                    rno: rno,
+                    segmento: cl.Segmento,
+                    telocal: "B",
+                    total: pagamento,
+                    totow: 0,
+                    procdata: data == default ? DateTime.Now.Date : data.Date,
+                    moeda: "MT",
+                    UTransid: u2BPayments.IdPagamento,
+                    UEntps: u2BPayments.Entidade,
+                    URefps: u2BPayments.Referencia
+
+                    //uAgid: agid,
+                    //uAgnome: agnome,
+                    //uAgcodigo: agcodigo
+                    );
+
+            Debug.Print("Reeeeeeceba: " + re.ToString());
+            _phcRepository.addRecibo(re);
+
+
+            decimal totalFacturaCorrente = 0;
+            decimal totalDividas = 0;
+
+            Debug.Print("Total CC " + contacorrente.Count.ToString());
+            foreach (var cc in contacorrente)
+            {
+                if (pagamento == 0)
+                    break;
+
+                var stamprl = KeysExtension.UseThisSizeForStamp(25);
+
+                decimal vPagar = 0;
+                if (pagamento <= (cc.Deb - cc.Debf))
+                {
+                    vPagar = pagamento;
+                }
+                else
+                {
+                    vPagar = (cc.Deb - cc.Debf);
+                }
+
+                if (cc.Dataven >= new DateTime(data.Year, data.Month, 1))
+                {
+                    totalFacturaCorrente += vPagar;
+                }
+
+                if (cc.Dataven < new DateTime(data.Year, data.Month, 1))
+                {
+                    totalDividas += vPagar;
+                }
+
+                _phcRepository.addLinhasRecibo(
+                    new Rl(
+                        restamp: stamp,
+                        rlstamp: stamprl,
+                        ccstamp: cc.Ccstamp,
+                        cdesc: cc.Cmdesc,
+                        cm: cc.Cm,
+                        datalc: cc.Datalc,
+                        dataven: cc.Dataven,
+                        enaval: cc.Deb - cc.Debf,
+                        eval: cc.Deb - cc.Debf,
+                        escrec: vPagar,
+                        escval: cc.Deb - cc.Debf,
+                        erec: vPagar,
+                        evori: cc.Deb,
+                        moeda: _phcRepository.getMoeda(),
+                        val: cc.Deb - cc.Debf,
+                        rec: vPagar,
+
+                        ndoc: config.Ndoc,
+                        nrdoc: cc.Nrdoc,
+                        process: true,
+
+                        rno: rno,
+                        rdata: data == default ? DateTime.Now.Date : data.Date,
+                        ousrdata: DateTime.Now.Date,
+                        usrdata: DateTime.Now.Date,
+                        ousrhora: $"{DateTime.Now.Hour}:{DateTime.Now.Minute}",
+                        usrhora: $"{DateTime.Now.Hour}:{DateTime.Now.Minute}",
+                        ousrinis: "ONLINEPAYMENTSAPI",
+                        usrinis: "ONLINEPAYMENTSAPI"
+
+                        ));
+                pagamento -= vPagar;
+
+            }
+
+            Debug.Print("totalFacturaCorrente " + totalFacturaCorrente.ToString());
+            recibos.Add(
+                new ReciboAux(
+                    stamp: stamp,
+                    numeroCliente: cl.No,
+                    nomeCliente: cl.Nome,
+                    tipo: TipoReciboEnum.CONTACORRENTE,
+                    total: pagamento,
+                    paymentResponse: WebTransactionCodes.SUCCESS,
+                    totalFacturaCorrente: totalFacturaCorrente,
+                    totalDividas: totalDividas
+                    )
+                );
+        }
+
+        private static string DeepMessage(Exception ex)
+        {
+            var msgs = new List<string>();
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                msgs.Add($"{e.GetType().Name}: {e.Message}");
+                if (e is SqlException se) msgs.Add($"SqlNumber={se.Number}");
+            }
+            return string.Join(" | ", msgs);
+        }
+
+
+
+        #endregion
+
+
 
 
 
@@ -143,6 +560,11 @@ namespace CFM_PAYMENTSWS.Services
                             await FcbProcessing(pagamentos);
                             break;
 
+                        case 109:
+                            pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 109);
+                            await MozaProcessing(pagamentos);
+                            break;
+
                         default:
                             break;
                     }
@@ -165,30 +587,6 @@ namespace CFM_PAYMENTSWS.Services
         }
 
 
-        void ScheduleUpdatePayments(IEnumerable<PaymentsQueue> pagamentos)
-        {
-            foreach (var pagamento in pagamentos)
-            {
-                Random random = new Random();
-
-                var dto = new PaymentCheckedDTO
-                {
-                    BatchId = pagamento.payment.BatchId,
-                    ProcessingDate = pagamento.payment.ProcessingDate.ToString("yyyy-MM-dd"),
-                    StatusCode = "0000",
-                    StatusDescription = "Pagamento processado com sucesso.",
-                    PaymentCheckedRecords = pagamento.payment.PaymentRecords.Select(pr => new PaymentCheckedRecordsDTO
-                    {
-                        TransactionId = pr.TransactionId,
-                        BankReference = "2025_" + random.Next(100000, 999999).ToString(),
-                        StatusCode = "0000",
-                        StatusDescription = "Pagamento processado com sucesso."
-                    }).ToList()
-                };
-
-                BackgroundJob.Schedule(() => actualizarPagamentos(dto), TimeSpan.FromSeconds(20));
-            }
-        }
         public async Task VerificarPagamentos()
         {
             string lockKey = "verificarPagamentos";
@@ -494,9 +892,7 @@ namespace CFM_PAYMENTSWS.Services
 
                 Debug.Print($"paymentCamel {paymentCamel}");
 
-                return;
                 BCIResponseDTO bciResponseDTO = new BCIResponseDTO();
-
 
                 if (checkPayments)
                 {
@@ -538,6 +934,56 @@ namespace CFM_PAYMENTSWS.Services
 
 
                 logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - BCI", paymentCamel);
+
+            }
+
+        }
+
+        async Task MozaProcessing(List<PaymentsQueue> pagamentos)
+        {
+
+            foreach (var pagamento in pagamentos)
+            {
+
+                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, "MozaProcessing.response.cod", "MozaProcessing.response.codDesc", "", "");
+                BCIAPI bciRepository = new BCIAPI();
+
+                PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase(pagamento.payment);
+
+                Debug.Print($"paymentCamel {paymentCamel}");
+
+                BCIResponseDTO bciResponseDTO = new BCIResponseDTO();
+
+                bciResponseDTO = bciRepository.loadPayments(paymentCamel);
+
+                ResponseDTO bciResponse = routeMapper.mapLoadPaymentResponse(106, bciResponseDTO);
+
+                Debug.Print("Resposta do Load");
+                Debug.Print(bciResponse.ToString());
+
+                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, bciResponse.response.cod, bciResponse.response.codDesc, "", "");
+
+
+                switch (bciResponse.response.cod)
+                {
+                    case "2028":
+                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", bciResponse.response.codDesc);
+                        Debug.Print("Teste Por Corrigir" + bciResponse.response.codDesc);
+                        break;
+
+                    case "0011" or "3002" or "0000" or "1001":
+                        actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
+                        Debug.Print("Teste Por processar" + bciResponse.response.codDesc);
+                        break;
+
+                    default:
+                        Debug.Print("Teste HS3" + bciResponse.response.codDesc);
+                        break;
+
+                }
+
+
+                logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - MOZA", paymentCamel);
 
             }
 
@@ -1073,7 +1519,7 @@ namespace CFM_PAYMENTSWS.Services
 
             }
 
-            responseDto.Id = responseID;
+            responseDto.Id = responseID.ToString();
 
             return responseDto;
         }

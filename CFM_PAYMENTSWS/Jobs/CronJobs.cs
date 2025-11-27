@@ -16,12 +16,19 @@ namespace CFM_PAYMENTSWS.Jobs
 
         public void JobHandler()
         {
-            
+
             RecurringJob.AddOrUpdate(
                "processarPagamentos",
                () => paymentService.ProcessarPagamentosAsync(),
-              Cron.MinuteInterval(5)
+               Cron.Yearly()
               );
+
+            RecurringJob.AddOrUpdate(
+                "ProcessarRecebimentos",
+                () => paymentService.ProcessarRecebimentosAsync(),
+                Cron.Yearly()
+            );
+            
 
             /*
             RecurringJob.AddOrUpdate(

@@ -19,6 +19,10 @@ namespace CFM_PAYMENTSWS.Domains.Interface
         public List<UProvider> getProviderData(decimal providerCode);
         public List<UProvider> getProviderByGroup(decimal providerCode, string grupo);
 
+        Task<bool> PaymentExistsAsync(U2bRecPayments payment);
+        List<U2bRecPayments> GetPendingTransactions();
+        Task AddPayment(U2bRecPayments payment);
+        void updateTransactionStatus(U2bRecPayments transacaoActualizar);
 
     }
 }

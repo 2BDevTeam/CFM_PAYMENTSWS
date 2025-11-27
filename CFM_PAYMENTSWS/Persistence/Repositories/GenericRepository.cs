@@ -1,20 +1,21 @@
-﻿using CFM_PAYMENTSWS.Domains.Interface;
+﻿using CFM_PAYMENTSWS.Domains.Contracts;
+using CFM_PAYMENTSWS.Domains.Interface;
 using CFM_PAYMENTSWS.Domains.Models;
+using CFM_PAYMENTSWS.DTOs;
 using CFM_PAYMENTSWS.Extensions;
 using CFM_PAYMENTSWS.Persistence.Contexts;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
-
 using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using static System.Net.WebRequestMethods;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using CFM_PAYMENTSWS.DTOs;
 
 namespace CFM_PAYMENTSWS.Persistence.Repositories
 {
@@ -52,6 +53,30 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         {
             appDbContext.SaveChanges();
         }
+
+        public async void SaveChangesAsync()
+        {
+            await appDbContext.SaveChangesAsync();
+        }
+
+        public async Task<ResponseDTO> SaveChangesRespDTO()
+        {
+            try
+            {
+                await appDbContext.SaveChangesAsync();
+                var ok = new ResponseDTO(WebTransactionCodes.SUCCESS, null, "ContaCorrenteRepository.SaveChanges");
+                Debug.Print("ContaCorrenteRepository.saveChanges: " + ok.ToString());
+                return ok;
+            }
+            catch (Exception ex)
+            {
+                var baseMsg = ex.GetBaseException().Message;
+                Debug.Print("ON REP ERROR SAVECHANGESASYNC FT " + baseMsg);
+                return new ResponseDTO(WebTransactionCodes.INTERNALERROR, baseMsg, "ContaCorrenteRepository.SaveChanges");
+            }
+        }
+
+
 
         public void BulkOverWrite<T>(List<List<T>> entityLists) where T : class
         {

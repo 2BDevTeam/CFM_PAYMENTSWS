@@ -23,7 +23,8 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         public virtual DbSet<U2bPayments> U2bPayments { get; set; } = null!;
         public virtual DbSet<U2bPaymentsQueue> U2bPaymentsQueue { get; set; } = null!;
         public virtual DbSet<U2bPaymentsHs> U2bPaymentsHs { get; set; } = null!;
-      
+        public virtual DbSet<U2bRecPayments> U2bRecPayments { get; set; } = null!;
+
         public virtual DbSet<E4> E4 { get; set; } = null!;
         public virtual DbSet<UProvider> UProvider { get; set; } = null!;
         public virtual DbSet<ApiKey> ApiKey { get; set; } = null!;
@@ -80,7 +81,112 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
             }
             modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
 
-            
+            modelBuilder.Entity<U2bRecPayments>(entity =>
+            {
+                entity.HasKey(e => e.U2bRecPaymentsStamp)
+                     .HasName("PK__u_2b_Rec__CA9E3A9BD022CAE9");
+
+                entity.ToTable("u_2b_RecPayments");
+
+                entity.Property(e => e.U2bRecPaymentsStamp)
+                    .HasMaxLength(25)
+                    .IsUnicode(false)
+                    .HasColumnName("u_2b_RecPaymentsStamp");
+
+                entity.Property(e => e.Data)
+                    .HasColumnType("datetime")
+                    .HasColumnName("data");
+
+                entity.Property(e => e.Descricao)
+                    .HasColumnName("descricao")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Entidade).HasColumnName("entidade");
+
+                entity.Property(e => e.Enviado).HasColumnName("enviado");
+
+                entity.Property(e => e.IdPagamento)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("idPagamento")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Marcada).HasColumnName("marcada");
+
+                entity.Property(e => e.Metodo)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("metodo")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Moeda)
+                    .HasMaxLength(10)
+                    .HasColumnName("moeda")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Ousrdata)
+                    .HasColumnType("date")
+                    .HasColumnName("ousrdata")
+                    .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.Ousrhora)
+                    .HasMaxLength(10)
+                    .IsUnicode(false)
+                    .HasColumnName("ousrhora")
+                    .HasDefaultValueSql("(left(CONVERT([time],getdate()),(8)))");
+
+                entity.Property(e => e.Ousrinis)
+                    .HasMaxLength(30)
+                    .IsUnicode(false)
+                    .HasColumnName("ousrinis")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Provider)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("provider")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Referencia)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("referencia");
+
+                entity.Property(e => e.StatusCode)
+                    .HasMaxLength(20)
+                    .IsUnicode(false)
+                    .HasColumnName("statusCode")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.StatusDescription)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("statusDescription")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Usrdata)
+                    .HasColumnType("date")
+                    .HasColumnName("usrdata")
+                    .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.Usrhora)
+                    .HasMaxLength(8)
+                    .IsUnicode(false)
+                    .HasColumnName("usrhora")
+                    .HasDefaultValueSql("(left(CONVERT([time],getdate()),(8)))");
+
+                entity.Property(e => e.Usrinis)
+                    .HasMaxLength(30)
+                    .IsUnicode(false)
+                    .HasColumnName("usrinis")
+                    .HasDefaultValueSql("('')");
+
+                entity.Property(e => e.Valor)
+                    .HasColumnType("decimal(18, 2)")
+                    .HasColumnName("valor");
+            });
+
+
             modelBuilder.Entity<Suliame>(entity =>
             {
                 entity.HasKey(e => e.Userno);

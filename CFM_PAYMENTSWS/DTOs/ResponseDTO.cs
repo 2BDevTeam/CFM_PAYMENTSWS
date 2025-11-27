@@ -15,6 +15,7 @@ namespace CFM_PAYMENTSWS.DTOs
             Data = data;
             Content = content;
         }
+
         public ResponseCodesDTO response { get; set; }
         public HeaderDTO Header { get; set; }
         public object? Data { get; set; }

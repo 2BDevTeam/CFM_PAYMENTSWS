@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-﻿using CFM_PAYMENTSWS.Domains.Models;
+using CFM_PAYMENTSWS.Domains.Models;
 using CFM_PAYMENTSWS.DTOs;
 using CFM_PAYMENTSWS.Providers.FCB.DTOs;
 
@@ -122,5 +122,41 @@ namespace CFM_PAYMENTSWS.Helper
 
             return new API { status = "0", message = "Os dados da API da entidade indicada não foram encontrados" };
         }
+
+        public string CalcularReferenciaComCheckDigit(string stringInput, string refPagCheck)
+        {
+            // Definir os pesos como no SQL original
+            Dictionary<int, int> pesos = new Dictionary<int, int>
+            {
+                {1, 1}, {2, 10}, {3, 3}, {4, 30}, {5, 9}, {6, 90}, {7, 27}, {8, 76}, {9, 81}, {10, 34},
+                {11, 49}, {12, 5}, {13, 50}, {14, 15}, {15, 53}, {16, 45}, {17, 62}, {18, 38}, {19, 89},
+                {20, 17}, {21, 73}, {22, 51}, {23, 25}, {24, 56}, {25, 75}, {26, 71}, {27, 31}, {28, 19},
+                {29, 93}, {30, 57}
+            };
+
+            // Calcular o check digit
+            int i = stringInput.Length;
+            int nTotal = 0;
+
+            while (i > 0)
+            {
+                int posicao = i + 2;
+                char c = stringInput[stringInput.Length - i];
+
+                if (int.TryParse(c.ToString(), out int digito) && pesos.ContainsKey(posicao))
+                {
+                    nTotal += digito * pesos[posicao];
+                }
+
+                i--;
+            }
+
+            int check = 98 - (nTotal % 97);
+            string finalCheck = check.ToString().PadLeft(2, '0');
+
+            // Retornar a referência completa com o check digit
+            return refPagCheck + finalCheck;
+        }
+
     }
 }

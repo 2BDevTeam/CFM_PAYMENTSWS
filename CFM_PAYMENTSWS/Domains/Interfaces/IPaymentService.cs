@@ -8,6 +8,7 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
         public Task<RespostaDTO> ProcessarPagamentos(PaymentDetailsDTO paymentDetailsDTO);
         public Task<bool> VerificarJobActivos(string lockKey);
         public void TerminarJob(string lockKey);
+        Task<List<RespostaDTO>> InsertPayments(List<PaymentDynamicDTO> paymentsDTO);
 
         /*
         public ResponseDTO GetResult(string nome);

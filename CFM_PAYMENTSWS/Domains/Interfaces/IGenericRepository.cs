@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CFM_PAYMENTSWS.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace CFM_PAYMENTSWS.Domains.Interface
 {
@@ -17,5 +18,8 @@ namespace CFM_PAYMENTSWS.Domains.Interface
         public void BulkOverWrite<T>(List<List<T>> entityLists) where T : class;
         public void BulkUpsertEntity<T>(List<T> entities, List<string> keyToExclude, bool saveChanges) where T : class;
         void SaveChanges();
+        public void SaveChangesAsync();
+        public Task<ResponseDTO> SaveChangesRespDTO();
+
     }
 }
