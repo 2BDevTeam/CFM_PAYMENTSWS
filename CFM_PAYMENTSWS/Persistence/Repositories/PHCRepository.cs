@@ -160,6 +160,12 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             return _context.Set<Tsre>().Where(tsre => tsre.UOnlinep == true).FirstOrDefault();
         }
 
+        public Bl getBlByBancagr(string bancagroup)
+        {
+            return _context.Set<Bl>()
+                .Where(bl => bl.UBancagr == bancagroup)
+                .FirstOrDefault();
+        }
 
         public void addRecibo(Re recibocc)
         {
@@ -169,6 +175,11 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         public void addLinhasRecibo(Rl linhasRecibo)
         {
             _context.Set<Rl>().Add(linhasRecibo);
+        }
+
+        public void addTitulos(Rech titulo)
+        {
+            _context.Set<Rech>().Add(titulo);
         }
 
         public string getMoeda()

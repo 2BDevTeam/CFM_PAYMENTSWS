@@ -25,5 +25,6 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public bool Marcada { get; set; }
         public string Moeda { get; set; } = null!;
         public string Descricao { get; set; } = null!;
+        public string RefPagamento { get; set; } = null!;
     }
 }

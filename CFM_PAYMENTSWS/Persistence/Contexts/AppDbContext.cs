@@ -169,6 +169,12 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("usrdata")
                     .HasDefaultValueSql("(getdate())");
 
+                entity.Property(e => e.RefPagamento)
+                    .HasMaxLength(100)
+                    .IsUnicode(false)
+                    .HasColumnName("refPagamento")
+                    .HasDefaultValueSql("('')");
+
                 entity.Property(e => e.Usrhora)
                     .HasMaxLength(8)
                     .IsUnicode(false)

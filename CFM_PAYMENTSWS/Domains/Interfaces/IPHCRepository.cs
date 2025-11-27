@@ -28,8 +28,11 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
         decimal getMaxRecibo();
         void addRecibo(Re recibocc);
         void addLinhasRecibo(Rl linhasRecibo);
-
+        void addTitulos(Rech titulo);
         Tsre getConfiguracaoRecibo();
+        
+        Bl getBlByBancagr(string bancagroup);
+
         string getMoeda();
 
     }

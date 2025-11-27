@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Persistence\Contexts\NewFolder\**" />
+    <Content Remove="Persistence\Contexts\NewFolder\**" />
+    <EmbeddedResource Remove="Persistence\Contexts\NewFolder\**" />
+    <None Remove="Persistence\Contexts\NewFolder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
     <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="Date" Version="1.0.9" />
@@ -41,7 +48,6 @@
   <ItemGroup>
     <Folder Include="Persistence\APIs\DTOs\" />
     <Folder Include="Persistence\APIs\Lenmed\Responses\" />
-    <Folder Include="Persistence\Contexts\NewFolder\" />
     <Folder Include="wwwroot\css\" />
   </ItemGroup>
 

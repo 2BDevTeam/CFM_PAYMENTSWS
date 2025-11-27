@@ -11,7 +11,7 @@ namespace CFM_PAYMENTSWS.DTOs
         public string PaymentId { get; set; }
 
         [Required]
-        [JsonPropertyName("entity")]
+        [JsonPropertyName("entidade")]
         public int Entity { get; set; }
 
         [Required]
@@ -33,6 +33,10 @@ namespace CFM_PAYMENTSWS.DTOs
         [Required]
         [JsonPropertyName("canal")]
         public string Method { get; set; }
+
+        [Required]
+        [JsonPropertyName("refPagamento")]
+        public string PaymentReference{ get; set; }
 
         public string? Description { get; set; }
 

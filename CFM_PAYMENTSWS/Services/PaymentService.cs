@@ -31,7 +31,9 @@ using Microsoft.EntityFrameworkCore.Storage;
 using MPesa;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks.Dataflow;
 using System.Xml.Linq;
 
@@ -126,20 +128,20 @@ namespace CFM_PAYMENTSWS.Services
 
                         if (refClienteValida != payment.Referencia)
                         {
-                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.INVALIDREFERENCE, payment.Entidade.ToString(), payment.IdPagamento));
+                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.INVALIDREFERENCE_PT, payment.Entidade.ToString(), payment.IdPagamento));
                             continue;
                         }
 
                         bool duplicated = await _paymentRespository.PaymentExistsAsync(payment);
                         if (duplicated)
                         {
-                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.DUPLICATEDPAYMENT, payment.IdPagamento));
+                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.DUPLICATEDPAYMENT_PT, payment.IdPagamento));
                             continue;
                         }
 
                         //Adicionar Pagamento
                         await _paymentRespository.AddPayment(payment);
-                        lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.SUCCESS, payment.IdPagamento));
+                        lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.SUCCESS_PT, payment.IdPagamento));
                     }
                     catch (Exception paymentEx)
                     {
@@ -182,6 +184,7 @@ namespace CFM_PAYMENTSWS.Services
                     Descricao = paymentDTO.Description ?? "",
                     StatusCode = WebTransactionCodes.PENDINGBATCH.cod,
                     StatusDescription = WebTransactionCodes.PENDINGBATCH.codDesc,
+                    RefPagamento = paymentDTO.PaymentReference,
                     Ousrinis = "CFM_Payments",
                     Usrinis = "CFM_Payments",
                 };
@@ -356,18 +359,20 @@ namespace CFM_PAYMENTSWS.Services
         public void criarReciboCC(Cl cl, decimal pagamento, List<ReciboAux> recibos, List<Cc> contacorrente, U2bRecPayments u2BPayments)
         {
             DateTime data = u2BPayments.Data;
-            var stamp = KeysExtension.UseThisSizeForStamp(25);
-            string restamp = stamp;
+            var restamp = KeysExtension.UseThisSizeForStamp(25);
             var rno = _phcRepository.getMaxRecibo();
 
-            var config = _phcRepository.getConfiguracaoRecibo();
+            Tsre config = _phcRepository.getConfiguracaoRecibo();
+            Bl bl = _phcRepository.getBlByBancagr(u2BPayments.Metodo);
+            string banco = bl.Banco, conta = bl.Conta;
+            string contaTesouraria = banco.PadRight(10) + " " + conta;
+
             Debug.Print("Configs" + config.ToString());
             Re re = new Re(
-                    restamp: stamp,
+                    restamp: restamp,
                     ccusto: cl.Ccusto,
                     chdata: data == default ? DateTime.Now.Date : data.Date,
-                    contado: 0,
-                    //contado: config.UNoconta,
+                    contado: bl.Noconta,
                     etotal: pagamento,
                     etotow: 0,
                     fref: cl.Fref,
@@ -379,9 +384,8 @@ namespace CFM_PAYMENTSWS.Services
                     nmdoc: config.Nmdoc,
                     no: cl.No,
                     nome: cl.Nome,
-                    olcodigo: "R00002",
-                    ollocal: "",
-                    //ollocal: config.UDnoconta,
+                    olcodigo: "R78211",
+                    ollocal: contaTesouraria,
                     ousrdata: DateTime.Now.Date,
                     usrdata: DateTime.Now.Date,
                     ousrhora: DateTime.Now.ToString("HH:MM:SS"),
@@ -397,14 +401,10 @@ namespace CFM_PAYMENTSWS.Services
                     total: pagamento,
                     totow: 0,
                     procdata: data == default ? DateTime.Now.Date : data.Date,
-                    moeda: "MT",
+                    moeda: _phcRepository.getMoeda(),
                     UTransid: u2BPayments.IdPagamento,
                     UEntps: u2BPayments.Entidade,
                     URefps: u2BPayments.Referencia
-
-                    //uAgid: agid,
-                    //uAgnome: agnome,
-                    //uAgcodigo: agcodigo
                     );
 
             Debug.Print("Reeeeeeceba: " + re.ToString());
@@ -444,7 +444,7 @@ namespace CFM_PAYMENTSWS.Services
 
                 _phcRepository.addLinhasRecibo(
                     new Rl(
-                        restamp: stamp,
+                        restamp: restamp,
                         rlstamp: stamprl,
                         ccstamp: cc.Ccstamp,
                         cdesc: cc.Cmdesc,
@@ -471,18 +471,36 @@ namespace CFM_PAYMENTSWS.Services
                         usrdata: DateTime.Now.Date,
                         ousrhora: $"{DateTime.Now.Hour}:{DateTime.Now.Minute}",
                         usrhora: $"{DateTime.Now.Hour}:{DateTime.Now.Minute}",
-                        ousrinis: "ONLINEPAYMENTSAPI",
-                        usrinis: "ONLINEPAYMENTSAPI"
+                        ousrinis: "FIPAGONLINEPAYMENTSAPI",
+                        usrinis: "FIPAGONLINEPAYMENTSAPI"
 
                         ));
                 pagamento -= vPagar;
 
             }
 
+            Rech titulo = new();
+            titulo.Rechstamp = KeysExtension.UseThisSizeForStamp(25);
+            titulo.Restamp = restamp;
+            titulo.Clbanco = bl.UBancagr;
+            titulo.Clcheque = u2BPayments.IdPagamento;
+            titulo.Chdata = data == default ? DateTime.Now.Date : data.Date;
+            titulo.Chvalor = u2BPayments.Valor;
+            titulo.Echvalor = u2BPayments.Valor;
+            titulo.Tptit = "Pagamentos de Serviços Online";
+            titulo.Ousrinis = "FIPAGONLINEPAYMENTSAPI";
+            titulo.Usrinis = "FIPAGONLINEPAYMENTSAPI";
+            titulo.Ousrdata = DateTime.Now.Date;
+            titulo.Usrdata = DateTime.Now.Date;
+            titulo.Ousrhora = DateTime.Now.ToString("HH:MM:SS");
+            titulo.Usrhora = DateTime.Now.ToString("HH:MM:SS");
+
+            _phcRepository.addTitulos(titulo);
+
             Debug.Print("totalFacturaCorrente " + totalFacturaCorrente.ToString());
             recibos.Add(
                 new ReciboAux(
-                    stamp: stamp,
+                    stamp: restamp,
                     numeroCliente: cl.No,
                     nomeCliente: cl.Nome,
                     tipo: TipoReciboEnum.CONTACORRENTE,
@@ -492,6 +510,7 @@ namespace CFM_PAYMENTSWS.Services
                     totalDividas: totalDividas
                     )
                 );
+
         }
 
         private static string DeepMessage(Exception ex)

@@ -80,7 +80,6 @@ namespace CFM_PAYMENTSWS.Controllers
         }
 
 
-
         [HttpPost]
         [Route("enviarPagamentos")]
         public async Task<ActionResult<List<RespostaDTO>>> GetPayment([FromBody] List<PaymentDynamicDTO> payments)
