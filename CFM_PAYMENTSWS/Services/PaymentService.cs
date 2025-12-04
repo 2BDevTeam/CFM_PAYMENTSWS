@@ -965,44 +965,42 @@ namespace CFM_PAYMENTSWS.Services
             {
 
                 insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, "MozaProcessing.response.cod", "MozaProcessing.response.codDesc", "", "");
-                BCIAPI bciRepository = new BCIAPI();
+                var mozaRepository = new Providers.Moza.Repository.MozaAPI();
 
                 PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase(pagamento.payment);
 
                 Debug.Print($"paymentCamel {paymentCamel}");
 
-                BCIResponseDTO bciResponseDTO = new BCIResponseDTO();
+                var mozaResponseDTO = await mozaRepository.LoadPaymentsAsync(paymentCamel);
 
-                bciResponseDTO = bciRepository.loadPayments(paymentCamel);
-
-                ResponseDTO bciResponse = routeMapper.mapLoadPaymentResponse(106, bciResponseDTO);
+                ResponseDTO mozaResponse = routeMapper.mapLoadPaymentResponse(109, mozaResponseDTO);
 
                 Debug.Print("Resposta do Load");
-                Debug.Print(bciResponse.ToString());
+                Debug.Print(mozaResponse.ToString());
 
-                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, bciResponse.response.cod, bciResponse.response.codDesc, "", "");
+                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, mozaResponse.response.cod, mozaResponse.response.codDesc, "", "");
 
 
-                switch (bciResponse.response.cod)
+                switch (mozaResponse.response.cod)
                 {
                     case "2028":
-                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", bciResponse.response.codDesc);
-                        Debug.Print("Teste Por Corrigir" + bciResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", mozaResponse.response.codDesc);
+                        Debug.Print("Teste Por Corrigir" + mozaResponse.response.codDesc);
                         break;
 
                     case "0011" or "3002" or "0000" or "1001":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
-                        Debug.Print("Teste Por processar" + bciResponse.response.codDesc);
+                        Debug.Print("Teste Por processar" + mozaResponse.response.codDesc);
                         break;
 
                     default:
-                        Debug.Print("Teste HS3" + bciResponse.response.codDesc);
+                        Debug.Print("Teste HS3" + mozaResponse.response.codDesc);
                         break;
 
                 }
 
 
-                logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - MOZA", paymentCamel);
+                logHelper.generateLogJB(mozaResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - MOZA", paymentCamel);
 
             }
 

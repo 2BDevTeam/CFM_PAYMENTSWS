@@ -4,6 +4,7 @@ using CFM_PAYMENTSWS.Providers.Nedbank.DTOs;
 using CFM_PAYMENTSWS.Providers.BCI.DTOs;
 using CFM_PAYMENTSWS.Providers.Bim.DTOs;
 using CFM_PAYMENTSWS.Providers.FCB.DTOs;
+using CFM_PAYMENTSWS.Providers.Moza.DTOs;
 
 namespace CFM_PAYMENTSWS.Mappers
 {
@@ -38,6 +39,11 @@ namespace CFM_PAYMENTSWS.Mappers
                     var fcbMapper = new FcbMapper();
                     FcbResponseDTO fcbResponse = (FcbResponseDTO)response;
                     return fcbMapper.MapFcbLoadPayments(fcbResponse);
+
+                case 109:
+                    var mozaMapper = new MozaMapper();
+                    MozaPaymentResponseDTO mozaResponse = (MozaPaymentResponseDTO)response;
+                    return mozaMapper.MapMozaLoadPayments(mozaResponse);
 
                 default:
                      throw new Exception("INVALID_PROVIDER_CODE_ON_MAP_PROVIDER_RESPONSE");
