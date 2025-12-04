@@ -163,7 +163,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         public Bl getBlByBancagr(string bancagroup)
         {
             return _context.Set<Bl>()
-                .Where(bl => bl.UBancagr == bancagroup)
+                .Where(bl => bl.UBancagr == bancagroup && bl.UCodeprov != 0)
                 .FirstOrDefault();
         }
 

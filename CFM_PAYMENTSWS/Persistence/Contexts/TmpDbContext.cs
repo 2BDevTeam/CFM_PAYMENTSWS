@@ -17,6 +17,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         {
         }
 
+        public virtual DbSet<Re> Re { get; set; } = null!;
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

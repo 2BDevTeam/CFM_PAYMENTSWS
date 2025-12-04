@@ -23,6 +23,7 @@ namespace CFM_PAYMENTSWS.Domains.Interface
         List<U2bRecPayments> GetPendingTransactions();
         Task AddPayment(U2bRecPayments payment);
         void updateTransactionStatus(U2bRecPayments transacaoActualizar);
+        U2bRecPayments GetU2BRecPayments(string id);
 
     }
 }

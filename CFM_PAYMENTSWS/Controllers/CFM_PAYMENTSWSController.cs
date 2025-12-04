@@ -89,6 +89,15 @@ namespace CFM_PAYMENTSWS.Controllers
         }
 
 
+        [HttpGet]
+        [Route("pagamento/{id}")]
+        public RespostaDTO ValidatePayment(string id)
+        {
+            return _paymentService.GetPaymentStatus(id);
+        }
+
+
+
     }
 
 

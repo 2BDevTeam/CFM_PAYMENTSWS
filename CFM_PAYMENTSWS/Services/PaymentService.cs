@@ -109,6 +109,22 @@ namespace CFM_PAYMENTSWS.Services
         #region Funções de Recebimentos
 
 
+        public RespostaDTO GetPaymentStatus(string id)
+        {
+            U2bRecPayments payment = _paymentRespository.GetU2BRecPayments(id);
+
+            if (payment == null)
+                return new RespostaDTO(id, WebTransactionCodes.TRANSACTIONNOTFOUND_PT);
+
+            if (payment.StatusCode == "1000")
+                return new RespostaDTO(id, WebTransactionCodes.SUCCESSPAYMENT_PT);
+
+            if (payment.StatusCode == "1001")
+                return new RespostaDTO(id, WebTransactionCodes.PENDINGPAYMENT_PT);
+
+            return new RespostaDTO(id, payment.StatusCode, payment.StatusDescription);
+        }
+
         public async Task<List<RespostaDTO>> InsertPayments(List<PaymentDynamicDTO> lstPaymentsDTO)
         {
             List<RespostaDTO> lstRespostas = new List<RespostaDTO>();
@@ -215,7 +231,6 @@ namespace CFM_PAYMENTSWS.Services
                     var resp = await processarReciboFt(transacao);
                 }
 
-
             }
             catch (Exception ex)
             {
@@ -240,6 +255,11 @@ namespace CFM_PAYMENTSWS.Services
                 Debug.Print($"u2bpayments.Ref {u2bpayments.Referencia} ");
 
                 Ft ft = await _phcRepository.GetFtByRef(u2bpayments.Referencia);
+                if (ft == null)
+                {
+                    throw new Exception("Factura não encontrada para a referência fornecida.");
+                }
+
                 Cl cl = await _phcRepository.getClienteByNo(ft.No);
 
                 List<Cc> contacorrente = new List<Cc>();
@@ -306,15 +326,14 @@ namespace CFM_PAYMENTSWS.Services
                 }
                 */
 
-
-                _paymentRespository.updateTransactionStatus(u2bpayments);
-
                 ResponseDTO saveChangesresponse = await _genericPHCRepository.SaveChangesRespDTO();
-
                 Debug.Print("Facturacao Save Changes Result " + saveChangesresponse.ToString());
 
                 if (saveChangesresponse.response.cod != "0000")
                     throw new GeneralException(saveChangesresponse);
+
+                _paymentRespository.updateTransactionStatus(u2bpayments);
+
 
                 var reciboResult = new PagamentoResultDTO(recibos, contacorrente);
 
@@ -366,46 +385,70 @@ namespace CFM_PAYMENTSWS.Services
             Bl bl = _phcRepository.getBlByBancagr(u2BPayments.Metodo);
             string banco = bl.Banco, conta = bl.Conta;
             string contaTesouraria = banco.PadRight(10) + " " + conta;
+            string moeda = _phcRepository.getMoeda();
 
             Debug.Print("Configs" + config.ToString());
-            Re re = new Re(
-                    restamp: restamp,
-                    ccusto: cl.Ccusto,
-                    chdata: data == default ? DateTime.Now.Date : data.Date,
-                    contado: bl.Noconta,
-                    etotal: pagamento,
-                    etotow: 0,
-                    fref: cl.Fref,
-                    local: cl.Local,
-                    memissao: "PTE",
-                    morada: cl.Morada,
-                    ncont: cl.Ncont,
-                    ndoc: config.Ndoc,
-                    nmdoc: config.Nmdoc,
-                    no: cl.No,
-                    nome: cl.Nome,
-                    olcodigo: "R78211",
-                    ollocal: contaTesouraria,
-                    ousrdata: DateTime.Now.Date,
-                    usrdata: DateTime.Now.Date,
-                    ousrhora: DateTime.Now.ToString("HH:MM:SS"),
-                    usrhora: DateTime.Now.ToString("HH:MM:SS"),
-                    ousrinis: "FIPAGONLINEPAYMENTSAPI",
-                    usrinis: "FIPAGONLINEPAYMENTSAPI",
-                    process: true,
-                    rdata: data == default ? DateTime.Now.Date : data.Date,
-                    reano: data == default ? DateTime.Now.Year : data.Year,
-                    rno: rno,
-                    segmento: cl.Segmento,
-                    telocal: "B",
-                    total: pagamento,
-                    totow: 0,
-                    procdata: data == default ? DateTime.Now.Date : data.Date,
-                    moeda: _phcRepository.getMoeda(),
-                    UTransid: u2BPayments.IdPagamento,
-                    UEntps: u2BPayments.Entidade,
-                    URefps: u2BPayments.Referencia
-                    );
+           
+            Re re = new Re();
+
+            re.Restamp = restamp;
+            re.Ccusto = cl.Ccusto;
+
+            re.Chdata = (data == default ? DateTime.Now.Date : data.Date);
+            re.Chmoeda = moeda;
+            re.Chtotal = pagamento;
+            re.Echtotal = pagamento;
+            re.Cheque = true;
+
+            re.Contado = bl.Noconta;
+            re.Etotal = pagamento;
+            re.Etotow = 0;
+
+            re.Fref = cl.Fref;
+            re.Local = cl.Local;
+            re.Memissao = "PTE";
+            re.Morada = cl.Morada;
+            re.Ncont = cl.Ncont;
+
+            re.Ndoc = config.Ndoc;
+            re.Nmdoc = config.Nmdoc;
+
+            re.No = cl.No;
+            re.Nome = cl.Nome;
+
+            re.Olcodigo = "R78211";
+            re.Ollocal = contaTesouraria;
+
+            re.Ousrdata = DateTime.Now.Date;
+            re.Usrdata = DateTime.Now.Date;
+
+            re.Ousrhora = DateTime.Now.ToString("HH:mm:ss");
+            re.Usrhora = DateTime.Now.ToString("HH:mm:ss");
+
+            re.Ousrinis = "FIPAGONLINEPAYMENTSAPI";
+            re.Usrinis = "FIPAGONLINEPAYMENTSAPI";
+
+            re.Process = true;
+
+            re.Rdata = (data == default ? DateTime.Now.Date : data.Date);
+            re.Reano = (data == default ? DateTime.Now.Year : data.Year);
+
+            re.Rno = rno;
+
+            re.Segmento = cl.Segmento;
+            re.Telocal = "B";
+
+            re.Total = pagamento;
+            re.Totow = 0;
+
+            re.Procdata = (data == default ? DateTime.Now.Date : data.Date);
+
+            re.Moeda = moeda;
+
+            re.UTransid = u2BPayments.IdPagamento;
+            re.UEntps = u2BPayments.Entidade;
+            re.URefps = u2BPayments.Referencia;
+
 
             Debug.Print("Reeeeeeceba: " + re.ToString());
             _phcRepository.addRecibo(re);
@@ -442,39 +485,45 @@ namespace CFM_PAYMENTSWS.Services
                     totalDividas += vPagar;
                 }
 
-                _phcRepository.addLinhasRecibo(
-                    new Rl(
-                        restamp: restamp,
-                        rlstamp: stamprl,
-                        ccstamp: cc.Ccstamp,
-                        cdesc: cc.Cmdesc,
-                        cm: cc.Cm,
-                        datalc: cc.Datalc,
-                        dataven: cc.Dataven,
-                        enaval: cc.Deb - cc.Debf,
-                        eval: cc.Deb - cc.Debf,
-                        escrec: vPagar,
-                        escval: cc.Deb - cc.Debf,
-                        erec: vPagar,
-                        evori: cc.Deb,
-                        moeda: _phcRepository.getMoeda(),
-                        val: cc.Deb - cc.Debf,
-                        rec: vPagar,
+                Rl rl = new Rl();
 
-                        ndoc: config.Ndoc,
-                        nrdoc: cc.Nrdoc,
-                        process: true,
+                rl.Restamp = restamp;
+                rl.Rlstamp = stamprl;
+                rl.Ccstamp = cc.Ccstamp;
+                rl.Cdesc = cc.Cmdesc;
+                rl.Cm = cc.Cm;
 
-                        rno: rno,
-                        rdata: data == default ? DateTime.Now.Date : data.Date,
-                        ousrdata: DateTime.Now.Date,
-                        usrdata: DateTime.Now.Date,
-                        ousrhora: $"{DateTime.Now.Hour}:{DateTime.Now.Minute}",
-                        usrhora: $"{DateTime.Now.Hour}:{DateTime.Now.Minute}",
-                        ousrinis: "FIPAGONLINEPAYMENTSAPI",
-                        usrinis: "FIPAGONLINEPAYMENTSAPI"
+                rl.Datalc = cc.Datalc;
+                rl.Dataven = cc.Dataven;
 
-                        ));
+                rl.Enaval = cc.Deb - cc.Debf;
+                rl.Eval = cc.Deb - cc.Debf;
+
+                rl.Escrec = vPagar;
+                rl.Escval = cc.Deb - cc.Debf;
+
+                rl.Erec = vPagar;
+                rl.Evori = cc.Deb;
+
+                rl.Moeda = moeda;
+                rl.Val = cc.Deb - cc.Debf;
+                rl.Rec = vPagar;
+
+                rl.Ndoc = config.Ndoc;
+                rl.Nrdoc = cc.Nrdoc;
+                rl.Process = true;
+
+                rl.Rno = rno;
+                rl.Rdata = (data == default ? DateTime.Now.Date : data.Date);
+
+                rl.Ousrdata = DateTime.Now.Date;
+                rl.Usrdata = DateTime.Now.Date;
+                rl.Ousrhora = $"{DateTime.Now.Hour}:{DateTime.Now.Minute}";
+                rl.Usrhora = $"{DateTime.Now.Hour}:{DateTime.Now.Minute}";
+                rl.Ousrinis = "FIPAGONLINEPAYMENTSAPI";
+                rl.Usrinis = "FIPAGONLINEPAYMENTSAPI";
+
+                _phcRepository.addLinhasRecibo(rl);
                 pagamento -= vPagar;
 
             }
@@ -487,7 +536,7 @@ namespace CFM_PAYMENTSWS.Services
             titulo.Chdata = data == default ? DateTime.Now.Date : data.Date;
             titulo.Chvalor = u2BPayments.Valor;
             titulo.Echvalor = u2BPayments.Valor;
-            titulo.Tptit = "Pagamentos de Serviços Online";
+            titulo.Tptit = "Pag. de Serviços Online";
             titulo.Ousrinis = "FIPAGONLINEPAYMENTSAPI";
             titulo.Usrinis = "FIPAGONLINEPAYMENTSAPI";
             titulo.Ousrdata = DateTime.Now.Date;

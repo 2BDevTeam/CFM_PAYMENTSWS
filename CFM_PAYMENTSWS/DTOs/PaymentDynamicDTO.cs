@@ -35,7 +35,7 @@ namespace CFM_PAYMENTSWS.DTOs
         public string Method { get; set; }
 
         [Required]
-        [JsonPropertyName("refPagamento")]
+        [JsonPropertyName("refPag")]
         public string PaymentReference{ get; set; }
 
         public string? Description { get; set; }

@@ -326,26 +326,6 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                         .Where(upayment => upayment.BatchId == batchId).ToList();
         }
 
-        /*
-        public List<U2bPayments> GetPaymentsBatchId2(string batchId)
-        {
-            if (_isTestEnvironment)
-            {
-                // Use the test table U2bPaymentsTs
-                return _context.Set<U2bPaymentsTs>() // Assuming U2bPaymentsTs is another entity
-                               .Where(upayment => upayment.BatchId == batchId)
-                               .ToList();
-            }
-            else
-            {
-                // Use the production table U2bPayments
-                return _context.Set<U2bPayments>()
-                               .Where(upayment => upayment.BatchId == batchId)
-                               .ToList();
-            }
-        }
-        */
-
         public List<U2bPaymentsQueue> GetPaymentsQueueBatchId(string batchId)
         {
             return _context.Set<U2bPaymentsQueue>()
@@ -375,8 +355,16 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             transacaoActualizar.StatusCode = WebTransactionCodes.SUCCESSPAYMENT.cod;
             transacaoActualizar.StatusDescription = WebTransactionCodes.SUCCESSPAYMENT.codDesc;
             //transacaoActualizar.message = WebTransactionCodes.SUCCESSPAYMENT.codDesc;
+
+            _context.Set<U2bRecPayments>().Update(transacaoActualizar);
+            _context.SaveChanges();
         }
 
+        public U2bRecPayments GetU2BRecPayments(string id)
+        {
+            return _context.Set<U2bRecPayments>()
+                .FirstOrDefault(p => p.IdPagamento.Trim() == id);
+        }
 
     }
 }
