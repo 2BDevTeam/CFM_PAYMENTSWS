@@ -31,12 +31,10 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         public virtual DbSet<Tb> Tb { get; set; } = null!;
         public virtual DbSet<UProvider> UProvider { get; set; } = null!;
 
-
+        /*
         public virtual DbSet<Ft> Ft { get; set; } = null!;
         public virtual DbSet<Ft3> Ft3 { get; set; } = null!;
         public virtual DbSet<Ft2> Ft2 { get; set; } = null!;
-
-
         public virtual DbSet<Cc> Cc { get; set; }
         public virtual DbSet<Cl> Cl { get; set; }
         public virtual DbSet<Cl2> Cl2 { get; set; }
@@ -46,6 +44,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         public virtual DbSet<Rech> Rech { get; set; } = null!;
         public virtual DbSet<Para1> Para1 { get; set; } = null!;
         public virtual DbSet<Rl> Rl { get; set; } = null!;
+        */
 
 
         public virtual DbSet<U2bPayments> U2bPayments { get; set; } = null!;
@@ -95,6 +94,8 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
             */
             modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
 
+
+            /*
             modelBuilder.Entity<Para1>(entity =>
             {
                 entity.HasKey(e => e.Descricao)
@@ -250,7 +251,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasDefaultValueSql("('')")
                     .IsFixedLength();
             });
-
 
             modelBuilder.Entity<Rl>(entity =>
             {
@@ -736,7 +736,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnType("numeric(18, 5)")
                     .HasColumnName("vsujirs");
             });
-
 
             modelBuilder.Entity<Rech>(entity =>
             {
@@ -1304,7 +1303,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
 
                 entity.Property(e => e.Valmovant).HasColumnName("valmovant");
             });
-
 
             modelBuilder.Entity<Re>(entity =>
             {
@@ -2480,7 +2478,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("xdstamp");
             });
 
-
             modelBuilder.Entity<Cc>(entity =>
             {
                 entity.HasKey(e => e.Ccstamp)
@@ -3046,7 +3043,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasDefaultValueSql("('')")
                     .HasColumnName("zona");
             });
-
 
             modelBuilder.Entity<Cl>(entity =>
             {
@@ -4152,7 +4148,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("validadecartao");
             });
 
-
             modelBuilder.Entity<Ft2>(entity =>
             {
                 entity.HasKey(e => e.Ft2stamp)
@@ -4211,7 +4206,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasDefaultValueSql("('')");
 
             });
-
 
             modelBuilder.Entity<Ft>(entity =>
             {
@@ -4420,7 +4414,6 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("zona")
                     .HasDefaultValueSql("('')");
             });
-
 
             modelBuilder.Entity<Ft3>(entity =>
             {
@@ -5118,7 +5111,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("walletreceiptid")
                     .HasDefaultValueSql("('')");
             });
-
+            */
 
             modelBuilder.Entity<U2bPayments>(entity =>
             {
