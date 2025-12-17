@@ -37,6 +37,35 @@ namespace CFM_PAYMENTSWS.Helper
             };
         }
 
+        public PaymentCamelCase ConvertPaymentToCamelCase_MOZA(Payment payment)
+        {
+            if (payment == null) throw new ArgumentNullException(nameof(payment));
+
+            return new PaymentCamelCase
+            {
+                BatchId = payment.BatchId,
+                Description = payment.Description.Length > 40
+                    ? payment.Description[..40]
+                    : payment.Description,
+                ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-ddTHH:mm:ss"),
+                DebitAccount = payment.DebitAccount,
+                initgPtyCode = payment.initgPtyCode,
+                BatchBooking = payment.BatchBooking,
+                PaymentRecords = payment.PaymentRecords?.Select(pr => new PaymentRecordsCamelCase
+                {
+                    TransactionId = pr.TransactionId,
+                    CreditAccount = pr.CreditAccount,
+                    BeneficiaryName = pr.BeneficiaryName,
+                    TransactionDescription = pr.TransactionDescription.Length > 40
+                        ? pr.TransactionDescription[..40]
+                        : pr.TransactionDescription,
+                    Currency = pr.Currency,
+                    Amount = pr.Amount,
+                    BeneficiaryEmail = pr.BeneficiaryEmail
+                }).ToList()
+            };
+        }
+
         public Paymentv1_5 ConvertPaymentToV1_5(Payment payment)
         {
             if (payment == null) throw new ArgumentNullException(nameof(payment));
@@ -45,7 +74,7 @@ namespace CFM_PAYMENTSWS.Helper
             {
                 BatchId = payment.BatchId,
                 Description = payment.Description,
-                ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-ddThh:mm:ss"),
+                ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-ddTHH:mm:ss"),
                 DebitAccount = payment.DebitAccount,
                 initgPty_Code = payment.initgPtyCode,
                 BatchBooking = int.Parse(payment.BatchBooking),

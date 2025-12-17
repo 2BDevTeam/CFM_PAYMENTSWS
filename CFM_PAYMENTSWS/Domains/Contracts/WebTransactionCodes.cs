@@ -18,6 +18,7 @@ namespace CFM_PAYMENTSWS.Domains.Contracts
         public static ResponseCodesDTO APIKEYNOTFOUND = new ResponseCodesDTO("0004", "Api Key not provided");
         public static ResponseCodesDTO INVALIDREFERENCE = new ResponseCodesDTO("0005", "Invalid Reference {0} for Payment {1}");
         public static ResponseCodesDTO INVALIDREFERENCE_PT = new ResponseCodesDTO("0005", "A referência {0} do pagamento {1} é inválida");
+        public static ResponseCodesDTO INVALIDPAYMENTMETHOD_PT = new ResponseCodesDTO("0005", "Canal de pagamento não encontrado.");
         public static ResponseCodesDTO DUPLICATEDPAYMENT = new ResponseCodesDTO("0006", "Duplicated payment for {0}");
         public static ResponseCodesDTO DUPLICATEDPAYMENT_PT = new ResponseCodesDTO("0006", "Pagamento {0} duplicado");
         public static ResponseCodesDTO INTERNALERROR = new ResponseCodesDTO("0007", "Internal Error");

@@ -144,7 +144,7 @@ namespace CFM_PAYMENTSWS.Services
 
                         if (refClienteValida != payment.Referencia)
                         {
-                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.INVALIDREFERENCE_PT, payment.Entidade.ToString(), payment.IdPagamento));
+                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.INVALIDREFERENCE_PT, payment.Referencia.ToString(), payment.IdPagamento));
                             continue;
                         }
 
@@ -152,6 +152,13 @@ namespace CFM_PAYMENTSWS.Services
                         if (duplicated)
                         {
                             lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.DUPLICATEDPAYMENT_PT, payment.IdPagamento));
+                            continue;
+                        }
+
+                        Bl bl = _phcRepository.getBlByBancagr(payment.Metodo);
+                        if (bl == null)
+                        {
+                            lstRespostas.Add(new RespostaDTO(payment.IdPagamento, WebTransactionCodes.INVALIDPAYMENTMETHOD_PT, payment.Metodo.ToString(), payment.IdPagamento));
                             continue;
                         }
 
@@ -600,6 +607,8 @@ namespace CFM_PAYMENTSWS.Services
 
                     switch (canal)
                     {
+                        
+                        
                         case 101:
 
                             //pagamentoQueue = _paymentRespository.GetPagamentosEmFila("Por enviar", 101);
@@ -628,6 +637,7 @@ namespace CFM_PAYMENTSWS.Services
                             await FcbProcessing(pagamentos);
                             break;
 
+                            
                         case 109:
                             pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 109);
                             await MozaProcessing(pagamentos);
@@ -721,7 +731,7 @@ namespace CFM_PAYMENTSWS.Services
             //
             List<string> listas = new List<string>
             {
-                "im225102157370704000002","MLQ25100264923.949469947","DNF25081352576.6520000_1",
+                "isa25120454473.447000002","MLQ25100264923.949469947","DNF25081352576.6520000_1",
                 "DNF25091159551.2890000_1",
                 "DNF25091146226.0610000_2",
                 "DNF25081339161.417000001_1","DNF25081352913.6760000_1",
@@ -989,7 +999,7 @@ namespace CFM_PAYMENTSWS.Services
                         Debug.Print("Teste Por Corrigir" + bciResponse.response.codDesc);
                         break;
 
-                    case "0011" or "3002" or "0000" or "1001":
+                    case "3002" or "0000" or "1001":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + bciResponse.response.codDesc);
                         break;
@@ -1016,10 +1026,11 @@ namespace CFM_PAYMENTSWS.Services
                 insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, "MozaProcessing.response.cod", "MozaProcessing.response.codDesc", "", "");
                 var mozaRepository = new Providers.Moza.Repository.MozaAPI();
 
-                PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase(pagamento.payment);
+                PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase_MOZA(pagamento.payment);
 
-                Debug.Print($"paymentCamel {paymentCamel}");
+                Debug.Print($"paymentCamelMoza {paymentCamel}");
 
+                
                 var mozaResponseDTO = await mozaRepository.LoadPaymentsAsync(paymentCamel);
 
                 ResponseDTO mozaResponse = routeMapper.mapLoadPaymentResponse(109, mozaResponseDTO);
@@ -1037,7 +1048,7 @@ namespace CFM_PAYMENTSWS.Services
                         Debug.Print("Teste Por Corrigir" + mozaResponse.response.codDesc);
                         break;
 
-                    case "0011" or "3002" or "0000" or "1001":
+                    case "0000" or "1001":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + mozaResponse.response.codDesc);
                         break;

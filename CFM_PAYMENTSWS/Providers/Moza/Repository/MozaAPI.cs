@@ -1,12 +1,14 @@
+using CFM_PAYMENTSWS.Domains.Models;
+using CFM_PAYMENTSWS.Helper;
+using CFM_PAYMENTSWS.Providers.Moza.DTOs;
+using Hangfire.MemoryStorage.Database;
+using Microsoft.VisualBasic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using CFM_PAYMENTSWS.Domains.Models;
-using CFM_PAYMENTSWS.Helper;
-using CFM_PAYMENTSWS.Providers.Moza.DTOs;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace CFM_PAYMENTSWS.Providers.Moza.Repository
 {
@@ -24,15 +26,21 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
                 {
                     throw new Exception("UNAUTHORIZED");
                 }
+                Debug.Print("MOZA Auth Token: " + authResponse.AccessToken);
 
                 var endpoint = GetEndpoint("loadPayments");
+                Debug.Print("MOZA Endpoint URL: " + endpoint.url);
 
                 ServicePointManager.ServerCertificateValidationCallback = (_, _, _, _) => true;
                 var httpWebRequest = (HttpWebRequest)WebRequest.Create(endpoint.url.Trim());
                 httpWebRequest.Method = endpoint.method;
                 httpWebRequest.ContentType = endpoint.contentType;
-                httpWebRequest.Accept = endpoint.contentType;
+                //httpWebRequest.Accept = endpoint.contentType;
                 httpWebRequest.Headers.Add("Authorization", $"Bearer {authResponse.AccessToken}");
+
+                // AUMENTO DO TIMEOUT  
+                httpWebRequest.Timeout = 3 * 60 * 1000;
+                httpWebRequest.ReadWriteTimeout = 3 * 60 * 1000;
 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
@@ -47,6 +55,7 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
                 using var httpResponse = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
                 using var streamReader = new StreamReader(httpResponse.GetResponseStream());
                 var result = await streamReader.ReadToEndAsync();
+                Debug.Print("MOZA LoadPaymentsAsync Response: " + result);
 
                 var response = JsonConvert.DeserializeObject<MozaPaymentResponseDTO>(result);
                 return response ?? new MozaPaymentResponseDTO
@@ -113,6 +122,7 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
             {
                 throw new Exception("MOZA login endpoint not configured");
             }
+            var data = new object();
 
             ServicePointManager.ServerCertificateValidationCallback = (_, _, _, _) => true;
 
@@ -120,10 +130,23 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
             httpWebRequest.Method = endpoint.method;
             httpWebRequest.ContentType = endpoint.contentType;
 
+            // AUMENTO DO TIMEOUT  
+            httpWebRequest.Timeout = 3 * 60 * 1000;
+            httpWebRequest.ReadWriteTimeout = 3 * 60 * 1000;
+
             using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
             {
-                var body = $"username={endpoint.credentials.username}&password={endpoint.credentials.password}&grant_type=password";
-                await streamWriter.WriteAsync(body);
+
+                data = new
+                {
+                    username = endpoint.credentials.username.ToString().Trim(),
+                    password = endpoint.credentials.password.ToString().Trim(),
+                };
+
+                string json = await Task.Run(() => JsonConvert.SerializeObject(data));
+
+                Debug.Print("json AUTHHH data " + json);
+                await streamWriter.WriteAsync(json);
                 await streamWriter.FlushAsync();
             }
 
@@ -133,7 +156,7 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
             return JsonConvert.DeserializeObject<MozaAuthResponseDTO>(result);
         }
 
-        private APIEndpoint GetEndpoint(string operationCode)
+        private CFM_PAYMENTSWS.DTOs.Endpoint GetEndpoint(string operationCode)
         {
             var apiData = apiHelper.getApiEntity(Entity, operationCode);
             var endpoint = apiData?.endpoints?.FirstOrDefault(e => e.operationCode == operationCode);

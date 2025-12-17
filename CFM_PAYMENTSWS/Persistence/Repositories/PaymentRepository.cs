@@ -227,7 +227,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         {
             return provider switch
             {
-                106 => tabela switch
+                106 or 109 => tabela switch
                 {
                     "TB" => "Salários",
                     "PR" => "Salários",
@@ -274,8 +274,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
             return provider switch
             {
-                107 => "CFM",
-                108 => "CFM",
+                107 or 108 or 109 => "CFM",
                 _ => null
             };
         }

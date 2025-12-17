@@ -29,7 +29,7 @@ namespace CFM_PAYMENTSWS.Mappers
             if (statusCode == "0000")
                 return WebTransactionCodes.SUCCESS;
 
-            if (statusCode == "1001")
+            if (statusCode == "1001" || statusCode == "0016")
                 return WebTransactionCodes.PENDINGBATCH;
 
             if (int.TryParse(statusCode, out var number))
