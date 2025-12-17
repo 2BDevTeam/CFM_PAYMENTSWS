@@ -129,7 +129,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             Debug.Print("Get Pagamento queue");
             try
             {
-                //await UpdateCCusto();
+                await UpdateCCusto();
 
 
                 var baseQuery = _context.Set<U2bPaymentsQueue>()
