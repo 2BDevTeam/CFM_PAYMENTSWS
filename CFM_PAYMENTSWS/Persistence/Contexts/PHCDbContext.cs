@@ -31,7 +31,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         public virtual DbSet<Tb> Tb { get; set; } = null!;
         public virtual DbSet<UProvider> UProvider { get; set; } = null!;
 
-        /*
+        
         public virtual DbSet<Ft> Ft { get; set; } = null!;
         public virtual DbSet<Ft3> Ft3 { get; set; } = null!;
         public virtual DbSet<Ft2> Ft2 { get; set; } = null!;
@@ -44,7 +44,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
         public virtual DbSet<Rech> Rech { get; set; } = null!;
         public virtual DbSet<Para1> Para1 { get; set; } = null!;
         public virtual DbSet<Rl> Rl { get; set; } = null!;
-        */
+        
 
 
         public virtual DbSet<U2bPayments> U2bPayments { get; set; } = null!;
@@ -95,7 +95,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
             modelBuilder.UseCollation("SQL_Latin1_General_CP1_CI_AS");
 
 
-            /*
+            
             modelBuilder.Entity<Para1>(entity =>
             {
                 entity.HasKey(e => e.Descricao)
@@ -5111,7 +5111,7 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnName("walletreceiptid")
                     .HasDefaultValueSql("('')");
             });
-            */
+            
 
             modelBuilder.Entity<U2bPayments>(entity =>
             {

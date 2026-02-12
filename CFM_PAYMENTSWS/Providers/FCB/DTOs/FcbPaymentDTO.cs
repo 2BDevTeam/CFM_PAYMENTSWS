@@ -40,6 +40,17 @@ namespace CFM_PAYMENTSWS.Providers.FCB.DTOs
         public decimal Amount { get; set; }
         public string? BeneficiaryEmail { get; set; }
 
-        public override string ToString() => JsonConvert.SerializeObject(this);
+        public override string ToString()
+        {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = false
+            };
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+        }
     }
 }

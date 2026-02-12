@@ -728,21 +728,7 @@ namespace CFM_PAYMENTSWS.Services
             Debug.Print("paymentRecordResponseDTOs" + json1);
 
             logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.actualizarPagamentos", json1);
-            //
-            List<string> listas = new List<string>
-            {
-                "isa25120454473.447000002","MLQ25100264923.949469947","DNF25081352576.6520000_1",
-                "DNF25091159551.2890000_1",
-                "DNF25091146226.0610000_2",
-                "DNF25081339161.417000001_1","DNF25081352913.6760000_1",
-                "DNF25081352576.652000002_1","DNF25081339161.4170000_1",
-                "DNF25081353369.858000002_1","DNF25081342632.4280000_1",
-                "DNF25081342632.428000002_1", "NFE25081945556.1843020_1","DNF25081353369.8580000_1",
-            };
-            if (listas.Contains(paymentHeader.BatchId))
-            {
-                return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
-            }
+            
             //validarPagamentos
             try
             {
@@ -762,6 +748,20 @@ namespace CFM_PAYMENTSWS.Services
 
                     foreach (var pagamento in paymentHeader.PaymentCheckedRecords)
                     {
+                        // Verificar se o pagamento já foi processado com sucesso anteriormente
+                        var paymentExistente = _paymentRespository.GetPayment(pagamento.TransactionId.Trim(), paymentHeader.BatchId);
+                        
+                        if (paymentExistente != null && paymentExistente.Estado == "Sucesso")
+                        {
+                            Debug.Print($"Pagamento {pagamento.TransactionId} já foi processado com sucesso anteriormente. Request ignorado.");
+                            logHelper.generateLogJB(
+                                new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento já processado"), null, null), 
+                                paymentHeader.BatchId, 
+                                "PaymentService.actualizarPagamentos - Duplicado Ignorado", 
+                                $"TransactionId: {pagamento.TransactionId}"
+                            );
+                            continue; // Ignora este pagamento e passa para o próximo
+                        }
 
                         insere2bHistorico(pagamento.TransactionId.Trim(), paymentHeader.BatchId, paymentHeader.BatchId, paymentHeader.StatusCode, paymentHeader.StatusDescription, pagamento.StatusCode, pagamento.StatusDescription);
 
@@ -895,18 +895,18 @@ namespace CFM_PAYMENTSWS.Services
                 switch (bimResponse.response.cod)
                 {
 
-                    case "0" or "0000" or "0011" or "0404":
+                    case "0" or "0000":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + bimResponse.response.codDesc);
                         break;
 
                     case "2028":
-                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", bimResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Erro", bimResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + bimResponse.response.codDesc);
                         break;
                     default:
-                        //actualizarEstadoDoPagamento(pagamento, "Por corrigir", bimResponse.response.codDesc);
-                        //Debug.Print("Teste HS3" + bimResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Erro", bimResponse.response.codDesc);
+                        Debug.Print("Teste HS3 - Erro: " + bimResponse.response.codDesc);
                         break;
 
                 }
@@ -920,14 +920,15 @@ namespace CFM_PAYMENTSWS.Services
 
         async Task FcbProcessing(List<PaymentsQueue> pagamentos)
         {
+            FcbPaymentDTO fcbPayment = new FcbPaymentDTO();
 
             foreach (var pagamento in pagamentos)
             {
                 try
                 {
                     FcbAPI fcbRepository = new FcbAPI();
-                    FcbPaymentDTO fcbPayment = apiHelper.ConvertPaymentToFcb(pagamento.payment);
-                    Debug.Print($"FCB {JsonConvert.SerializeObject(fcbPayment)}");
+                    fcbPayment = apiHelper.ConvertPaymentToFcb(pagamento.payment);
+                    Debug.Print($"FCB {fcbPayment}");
                     FcbResponseDTO fcbResponseDTO = await fcbRepository.LoadPaymentsAsync(fcbPayment);
 
                     ResponseDTO fcbResponse = routeMapper.mapLoadPaymentResponse(108, fcbResponseDTO);
@@ -941,17 +942,17 @@ namespace CFM_PAYMENTSWS.Services
                             break;
 
                         default:
-                            actualizarEstadoDoPagamento(pagamento, "Por corrigir", fcbResponse.response.codDesc);
+                            actualizarEstadoDoPagamento(pagamento, "Erro", fcbResponse.response.codDesc);
                             break;
                     }
 
-                    logHelper.generateLogJB(fcbResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - FCB", pagamento.payment);
+                    logHelper.generateLogJB(fcbResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - FCB", fcbPayment);
                 }
                 catch (Exception ex)
                 {
                     var response = new ResponseDTO(new ResponseCodesDTO("0007", "Erro no processamento com o FCB"), ex.Message, null);
-                    actualizarEstadoDoPagamento(pagamento, "Por corrigir", ex.Message);
-                    logHelper.generateLogJB(response, pagamento.payment.BatchId, "PaymentService.processarPagamento - FCB", pagamento.payment);
+                    actualizarEstadoDoPagamento(pagamento, "Erro", ex.Message);
+                    logHelper.generateLogJB(response, pagamento.payment.BatchId, "PaymentService.processarPagamento - FCB", fcbPayment);
                 }
             }
         }
@@ -995,7 +996,7 @@ namespace CFM_PAYMENTSWS.Services
                 switch (bciResponse.response.cod)
                 {
                     case "2028":
-                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", bciResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Erro", bciResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + bciResponse.response.codDesc);
                         break;
 
@@ -1005,6 +1006,7 @@ namespace CFM_PAYMENTSWS.Services
                         break;
 
                     default:
+                        actualizarEstadoDoPagamento(pagamento, "Erro", bciResponse.response.codDesc);
                         Debug.Print("Teste HS3" + bciResponse.response.codDesc);
                         break;
 
@@ -1044,7 +1046,7 @@ namespace CFM_PAYMENTSWS.Services
                 switch (mozaResponse.response.cod)
                 {
                     case "2028":
-                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", mozaResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Erro", mozaResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + mozaResponse.response.codDesc);
                         break;
 
@@ -1054,7 +1056,8 @@ namespace CFM_PAYMENTSWS.Services
                         break;
 
                     default:
-                        Debug.Print("Teste HS3" + mozaResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Erro", mozaResponse.response.codDesc);
+                        Debug.Print("Teste HS3 - Erro: " + mozaResponse.response.codDesc);
                         break;
 
                 }
@@ -1085,7 +1088,7 @@ namespace CFM_PAYMENTSWS.Services
                 switch (nedbankResponse.response.cod)
                 {
                     case "0011":
-                        actualizarEstadoDoPagamento(pagamento, "Por corrigir", nedbankResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Erro", nedbankResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + nedbankResponse.response.codDesc);
                         break;
 
@@ -1095,14 +1098,18 @@ namespace CFM_PAYMENTSWS.Services
                         break;
 
                     case "0010":
+                        actualizarEstadoDoPagamento(pagamento, "Erro", nedbankResponse.response.codDesc);
+                        Debug.Print("Teste Por Corrigir - Erro 0010: " + nedbankResponse.response.codDesc);
                         break;
 
                     case "0007":
-                        Debug.Print("Teste HS2" + nedbankResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Erro", nedbankResponse.response.codDesc);
+                        Debug.Print("Teste HS2 - Erro: " + nedbankResponse.response.codDesc);
                         break;
 
                     default:
-                        Debug.Print("Teste HS3" + nedbankResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Erro", nedbankResponse.response.codDesc);
+                        Debug.Print("Teste HS3 - Erro: " + nedbankResponse.response.codDesc);
                         break;
 
                 }
@@ -1134,7 +1141,6 @@ namespace CFM_PAYMENTSWS.Services
                             response = await mpesaApi.B2CpaymentProviderRoute(pagamento);
                             Debug.Print($"RESPOSTA DO PAGAMENTO 00077 {response.ToString()}");
                             logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
-                            _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
                             actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
 
                             break;
@@ -1144,7 +1150,6 @@ namespace CFM_PAYMENTSWS.Services
                             Debug.Print($"Pagamento Existente");
                             response = new ResponseDTO(new ResponseCodesDTO("0000", "Success"), estadoDoPagamento.Data, pagamento.ToString());
                             logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
-                            _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
                             actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
 
                             break;
@@ -1154,7 +1159,6 @@ namespace CFM_PAYMENTSWS.Services
                             response = await mpesaApi.B2CpaymentProviderRoute(pagamento);
                             Debug.Print($"RESPOSTA DO PAGAMENTO 0002 {response.ToString()}");
                             logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
-                            _paymentRespository.actualizarEstadoDoPagamento(pagamento, response);
                             actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
 
                             break;
@@ -1301,12 +1305,8 @@ namespace CFM_PAYMENTSWS.Services
                                      .FirstOrDefault();
 
             var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Oristamp);
-            /*
-            */
-
 
             Debug.Print("Prontos para actualziar");
-            Debug.Print($"Payment Queue {JsonConvert.SerializeObject(paymentQueue)}");
             if (payment != null)
             {
                 payment.Dataprocessado = DateTime.Now;
@@ -1324,11 +1324,12 @@ namespace CFM_PAYMENTSWS.Services
                 wspayment.Usrdata = DateTime.Now;
                 wspayment.Bankreference = pagamento.BankReference;
             }
-            /*
-            */
+            
+            // Eliminar sempre da Queue após ter resultado do banco (sucesso ou erro)
             if (paymentQueue != null)
             {
-                //_genericPaymentRepository.Delete(paymentQueue);
+                _genericPaymentRepository.Delete(paymentQueue);
+                Debug.Print($"Pagamento com TransactionId {pagamento.TransactionId} eliminado da Queue após processamento. Estado: {estado}");
             }
 
             DateTime processingDate = ParseProcessingDate(paymentHeader.ProcessingDate);
@@ -1378,16 +1379,13 @@ namespace CFM_PAYMENTSWS.Services
                     break;
 
             }
-            /*
-            */
 
             var trfb = _phcRepository.GetUTrfb(paymentQueue.BatchId);
             if (trfb != null)
             {
                 trfb.Rdata = processingDate;
             }
-            /*
-            */
+            
             _genericPaymentRepository.SaveChanges();
             _genericPHCRepository.SaveChanges();
 
@@ -1528,7 +1526,12 @@ namespace CFM_PAYMENTSWS.Services
                 _genericPHCRepository.SaveChanges();
             }
 
-
+            // Eliminar sempre da Queue após ter resultado do banco (sucesso ou erro)
+            foreach (var paymentQueue in paymentQueueToUpdate)
+            {
+                _genericPaymentRepository.Delete(paymentQueue);
+                Debug.Print($"Pagamento com BatchId {u2BPayments.payment.BatchId} eliminado da Queue após processamento. Estado: {estado}");
+            }
 
             _genericPaymentRepository.SaveChanges();
         }

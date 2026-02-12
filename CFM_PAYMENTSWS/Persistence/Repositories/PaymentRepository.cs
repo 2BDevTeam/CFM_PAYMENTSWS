@@ -56,48 +56,6 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         }
 
 
-        public void actualizarEstadoDoPagamento(U2bPaymentsQueue u2BPayments, ResponseDTO responseDTO)
-        {
-            if (responseDTO.response.cod != "0000")
-            {
-                var paymentStatus = _context.Set<U2bPayments>().Where(u2bpayments => u2bpayments.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
-
-                if (paymentStatus.Estado != "SUCESSO")
-                {
-
-                    _context.Set<U2bPayments>().Where(u2bpayments =>
-                    u2bpayments.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp)
-                    .Update(x => new U2bPayments()
-                    {
-                        Processado = true,
-                        Estado = (responseDTO.response.cod == "0000" ? "SUCESSO" : "ERRO"),
-                        Descricao = (responseDTO.response.cod == "0000" ? "Sucesso" : "Erro ao processar pagamento")
-                    });
-
-                }
-
-                return;
-
-            }
-
-
-            Debug.Print("Update payment ");
-            //var payment = _context.Set<U2bPayments>().Where(upayment => upayment.U2bPaymentsstamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
-
-            var payment = GetPaymentByStamp(u2BPayments.U2bPaymentsQueuestamp);
-            Debug.Print($"Update payment2   {JsonConvert.SerializeObject(payment)}");
-
-            payment.Processado = true;
-            payment.Estado = "SUCESSO";
-            payment.Descricao = "Sucesso";
-
-            var paymentQueue = _context.Set<U2bPaymentsQueue>().Where(upayment => upayment.U2bPaymentsQueuestamp == u2BPayments.U2bPaymentsQueuestamp).FirstOrDefault();
-            Debug.Print($"Update payment2   {JsonConvert.SerializeObject(paymentQueue)}");
-
-            _context.Remove(paymentQueue);
-            _context.SaveChanges();
-        }
-
         async Task UpdateCCusto()
         {
 
@@ -129,7 +87,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             Debug.Print("Get Pagamento queue");
             try
             {
-                await UpdateCCusto();
+                //await UpdateCCusto();
 
 
                 var baseQuery = _context.Set<U2bPaymentsQueue>()
@@ -180,7 +138,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                                 TransactionId = encryptionHelper.DecryptText(paymentRecord.TransactionId, paymentRecord.Keystamp),
                                 CreditAccount = encryptionHelper.DecryptText(paymentRecord.Destino, paymentRecord.Keystamp),
                                 BeneficiaryEmail = string.IsNullOrEmpty(encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp))
-                                                        ? ""
+                                                        ? "NA"
                                                         : FormatSpecialChars(encryptionHelper.DecryptText(paymentRecord.Emailf, paymentRecord.Keystamp))
 
                             }).ToList()

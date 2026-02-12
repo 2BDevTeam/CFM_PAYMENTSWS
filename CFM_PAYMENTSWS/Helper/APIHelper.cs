@@ -98,8 +98,8 @@ namespace CFM_PAYMENTSWS.Helper
             return new FcbPaymentDTO
             {
                 BatchId = payment.BatchId,
-                Description = payment.Description.Length > 140
-                    ? payment.Description[..140]
+                Description = payment.Description.Length > 40
+                    ? payment.Description[..40]
                     : payment.Description,
                 ProcessingDate = payment.ProcessingDate.ToString("yyyy-MM-ddTHH:mm:ss.fff"),
                 DebitAccount = payment.DebitAccount,
@@ -110,16 +110,26 @@ namespace CFM_PAYMENTSWS.Helper
                     TransactionId = pr.TransactionId,
                     CreditAccount = pr.CreditAccount,
                     BeneficiaryName = pr.BeneficiaryName,
-                    TransactionDescription = pr.TransactionDescription.Length > 140
-                        ? pr.TransactionDescription[..140]
+                    TransactionDescription = pr.TransactionDescription.Length > 40
+                        ? pr.TransactionDescription[..40]
                         : pr.TransactionDescription,
                     Currency = pr.Currency,
                     Amount = pr.Amount,
-                    BeneficiaryEmail = string.IsNullOrWhiteSpace(pr.BeneficiaryEmail) ? null : pr.BeneficiaryEmail
+                    BeneficiaryEmail = FormatEmail(pr.BeneficiaryEmail)
                 }).ToList() ?? new List<FcbPaymentRecordDTO>()
             };
         }
 
+        string FormatEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return "";
+
+            if (email== "NA")
+                return "";
+
+            return email;
+        }
 
         public API getApiEntity(string entity, string operationCode)
         {
