@@ -7,6 +7,7 @@ using CFM_PAYMENTSWS.Persistence.Contexts;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -74,6 +75,11 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 Debug.Print("ON REP ERROR SAVECHANGESASYNC FT " + baseMsg);
                 return new ResponseDTO(WebTransactionCodes.INTERNALERROR, baseMsg, "ContaCorrenteRepository.SaveChanges");
             }
+        }
+
+        public IDbContextTransaction BeginTransaction()
+        {
+            return appDbContext.Database.BeginTransaction();
         }
 
 

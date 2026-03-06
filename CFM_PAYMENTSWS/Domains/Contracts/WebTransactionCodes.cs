@@ -30,6 +30,12 @@ namespace CFM_PAYMENTSWS.Domains.Contracts
         public static ResponseCodesDTO USERCREATIONFAILED = new ResponseCodesDTO("0011", "User creation failed! Please check user details and try again.");
         public static ResponseCodesDTO SUCCESSPAYMENT = new ResponseCodesDTO("1000", "Payment successfully processed");
         public static ResponseCodesDTO SUCCESSPAYMENT_PT = new ResponseCodesDTO("1000", "Pagamento processado com sucesso");
+        
+        // Códigos de erro interno (1000+)
+        public static ResponseCodesDTO INVOICENOTFOUND = new ResponseCodesDTO("1003", "Factura não encontrada para a referência fornecida");
+        public static ResponseCodesDTO CLIENTNOTFOUND = new ResponseCodesDTO("1004", "Cliente não encontrado");
+        public static ResponseCodesDTO ACCOUNTNOTFOUND = new ResponseCodesDTO("1005", "Conta corrente não encontrada para a fatura");
+        public static ResponseCodesDTO RECEIPTSAVEERROR = new ResponseCodesDTO("1006", "Erro ao gravar recibo");
 
     }
 }

@@ -19,6 +19,8 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
 
         public async Task<MozaPaymentResponseDTO> LoadPaymentsAsync(PaymentCamelCase payment)
         {
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 var authResponse = await AuthenticateAsync();
@@ -33,6 +35,7 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
 
                 ServicePointManager.ServerCertificateValidationCallback = (_, _, _, _) => true;
                 var httpWebRequest = (HttpWebRequest)WebRequest.Create(endpoint.url.Trim());
+                var endpointUrl = endpoint.url;
                 httpWebRequest.Method = endpoint.method;
                 httpWebRequest.ContentType = endpoint.contentType;
                 //httpWebRequest.Accept = endpoint.contentType;
@@ -53,22 +56,38 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
                 }
 
                 using var httpResponse = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
+                var httpStatusCode = (int)httpResponse.StatusCode;
                 using var streamReader = new StreamReader(httpResponse.GetResponseStream());
                 var result = await streamReader.ReadToEndAsync();
                 Debug.Print("MOZA LoadPaymentsAsync Response: " + result);
 
                 var response = JsonConvert.DeserializeObject<MozaPaymentResponseDTO>(result);
-                return response ?? new MozaPaymentResponseDTO
+                if (response != null)
+                {
+                    stopwatch.Stop();
+                    response.HttpStatusCode = httpStatusCode;
+                    response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                    response.EndpointUrl = endpointUrl;
+                    return response;
+                }
+
+                stopwatch.Stop();
+                var emptyResponse = new MozaPaymentResponseDTO
                 {
                     Data = new MozaPaymentDataDTO
                     {
                         StatusCode = "0007",
                         StatusDescription = "Empty response from MOZA service"
-                    }
+                    },
+                    HttpStatusCode = httpStatusCode,
+                    DurationMs = (int)stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = endpointUrl
                 };
+                return emptyResponse;
             }
             catch (WebException ex)
             {
+                stopwatch.Stop();
                 var statusCode = HttpStatusCode.InternalServerError;
                 var statusDescription = ex.Message;
 
@@ -83,6 +102,9 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
                         var errorDto = JsonConvert.DeserializeObject<MozaPaymentResponseDTO>(payload);
                         if (errorDto != null)
                         {
+                            errorDto.HttpStatusCode = (int)statusCode;
+                            errorDto.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                            errorDto.EndpointUrl = GetEndpoint("loadPayments").url;
                             return errorDto;
                         }
                     }
@@ -92,25 +114,34 @@ namespace CFM_PAYMENTSWS.Providers.Moza.Repository
                     }
                 }
 
-                return new MozaPaymentResponseDTO
+                var errorMozaResponse = new MozaPaymentResponseDTO
                 {
                     Data = new MozaPaymentDataDTO
                     {
                         StatusCode = ((int)statusCode).ToString(),
                         StatusDescription = statusDescription
-                    }
+                    },
+                    HttpStatusCode = (int)statusCode,
+                    DurationMs = (int)stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = GetEndpoint("loadPayments").url
                 };
+                return errorMozaResponse;
             }
             catch (Exception ex)
             {
-                return new MozaPaymentResponseDTO
+                stopwatch.Stop();
+                var exceptionResponse = new MozaPaymentResponseDTO
                 {
                     Data = new MozaPaymentDataDTO
                     {
                         StatusCode = "0007",
                         StatusDescription = ex.Message
-                    }
+                    },
+                    HttpStatusCode = 500,
+                    DurationMs = (int)stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = GetEndpoint("loadPayments").url
                 };
+                return exceptionResponse;
             }
         }
 

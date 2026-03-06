@@ -19,8 +19,12 @@ namespace CFM_PAYMENTSWS.Mappers
             var config = new MapperConfiguration(cfg =>
                 cfg.CreateMap<BimResponseDTO, ResponseDTO>()
                 .ForPath(dest => dest.response, act => act.MapFrom(src => getStatusCode(src)))
-                .ForPath(dest => dest.Data, act => act.MapFrom(src => bimResponseDTO.ToString())
-                ));
+                .ForPath(dest => dest.Content, act => act.MapFrom(src => bimResponseDTO.Description))
+                .ForPath(dest => dest.Data, act => act.MapFrom(src => bimResponseDTO.ToString()))
+                .ForPath(dest => dest.HttpStatusCode, act => act.MapFrom(src => bimResponseDTO.HttpStatusCode))
+                .ForPath(dest => dest.DurationMs, act => act.MapFrom(src => bimResponseDTO.DurationMs))
+                .ForPath(dest => dest.EndpointUrl, act => act.MapFrom(src => bimResponseDTO.EndpointUrl))
+                );
             var mapper = new Mapper(config);
             var responseDTO = mapper.Map<ResponseDTO>(bimResponseDTO);
 
@@ -59,7 +63,7 @@ namespace CFM_PAYMENTSWS.Mappers
                 return new ResponseDTO(responseCodes, checkPaymentReportResponseDTO.ToString(), null);
             }
 
-            if (checkPaymentReportResponseDTO.StatusCode == "1001")
+            if (checkPaymentReportResponseDTO.StatusCode == "1001" || checkPaymentReportResponseDTO.StatusCode == "0016")
             {
                 responseCodes = WebTransactionCodes.PENDINGBATCH;
                 return new ResponseDTO(responseCodes, checkPaymentReportResponseDTO.ToString(), null);
@@ -114,6 +118,10 @@ namespace CFM_PAYMENTSWS.Mappers
             if (bimResponseDTO.StatusCode == "0000" || bimResponseDTO.StatusCode == "0" || bimResponseDTO.StatusCode == "16")
                 return WebTransactionCodes.SUCCESS;
 
+            if (bimResponseDTO.StatusCode == "1001" || bimResponseDTO.StatusCode == "0016")
+            {
+                return WebTransactionCodes.PENDINGBATCH;
+            }
 
             return new ResponseCodesDTO("0404", bimResponseDTO.StatusDescription);
 

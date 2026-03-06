@@ -14,6 +14,10 @@ namespace MPesa
 
         // Query Transaction
         public string TransactionStatus { get; }
+        public int? HttpStatusCode { get; set; }
+        public int? DurationMs { get; set; }
+        public string EndpointUrl { get; set; }
+        
         public override string ToString() => JsonConvert.SerializeObject(this);
 
         public Response(

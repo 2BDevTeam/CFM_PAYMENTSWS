@@ -22,5 +22,10 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public string DebitAccount { get; set; } = null!;
         public DateTime Ousrdata { get; set; }
         public string Oristamp { get; set; } = null!;
+        
+        // Novos campos adicionados
+        public int? Canal { get; set; }
+        public string? CanalNome { get; set; }
+        public string? Tabela { get; set; }
     }
 }

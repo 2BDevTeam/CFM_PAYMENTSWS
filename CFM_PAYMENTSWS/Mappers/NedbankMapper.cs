@@ -19,8 +19,12 @@ namespace CFM_PAYMENTSWS.Mappers
             var config = new MapperConfiguration(cfg =>
                 cfg.CreateMap<NedbankResponseDTO, ResponseDTO>()
                 .ForPath(dest => dest.response, act => act.MapFrom(src => getStatusCode(src)))
-                .ForPath(dest => dest.Data, act => act.MapFrom(src => nedbankResponseDTO.ToString())
-                ));
+                .ForPath(dest => dest.Content, act => act.MapFrom(src => nedbankResponseDTO.Description))
+                .ForPath(dest => dest.Data, act => act.MapFrom(src => nedbankResponseDTO.ToString()))
+                .ForPath(dest => dest.HttpStatusCode, act => act.MapFrom(src => nedbankResponseDTO.HttpStatusCode))
+                .ForPath(dest => dest.DurationMs, act => act.MapFrom(src => nedbankResponseDTO.DurationMs))
+                .ForPath(dest => dest.EndpointUrl, act => act.MapFrom(src => nedbankResponseDTO.EndpointUrl))
+                );
             var mapper = new Mapper(config);
             var responseDTO = mapper.Map<ResponseDTO>(nedbankResponseDTO);
 

@@ -74,25 +74,69 @@ namespace CFM_PAYMENTSWS.Services
 
         public async Task<bool> VerificarJobActivos(string lockKey)
         {
-            var jobLock = _phcRepository.GetJobLocks(lockKey);
+            try
+            {
+                var jobLock = _phcRepository.GetJobLocks(lockKey);
 
-            if (jobLock != null && jobLock.IsRunning)
-            {
-                Debug.Print("O job já está em execução");
-                return true;
-            }
+                if (jobLock != null && jobLock.IsRunning)
+                {
+                    // Verificar se o job está executando há mais de 2 horas
+                    var duracaoExecucao = DateTime.Now - jobLock.DataExec;
+                    if (duracaoExecucao.TotalHours > 2)
+                    {
+                        Debug.Print($"Job '{lockKey}' está executando há {duracaoExecucao.TotalHours:F2} horas. Eliminando e recomeçando...");
+                        
+                        // Eliminar o job antigo
+                        _genericPHCRepository.Delete(jobLock);
+                        _genericPHCRepository.SaveChanges();
+                        
+                        // Criar novo lock
+                        jobLock = new JobLocks 
+                        { 
+                            JobId = lockKey, 
+                            IsRunning = true,
+                            DataExec = DateTime.Now
+                        };
+                        _genericPHCRepository.Add(jobLock);
+                        _genericPHCRepository.SaveChanges();
+                        
+                        return false; // Job foi resetado, pode executar
+                    }
+                    
+                    Debug.Print("O job já está em execução");
+                    return true;
+                }
 
-            if (jobLock == null)
-            {
-                jobLock = new JobLocks { JobId = lockKey, IsRunning = true };
-                _genericPHCRepository.Add(jobLock);
+                if (jobLock == null)
+                {
+                    jobLock = new JobLocks 
+                    { 
+                        JobId = lockKey, 
+                        IsRunning = true,
+                        DataExec = DateTime.Now
+                    };
+                    _genericPHCRepository.Add(jobLock);
+                }
+                else
+                {
+                    jobLock.IsRunning = true;
+                    jobLock.DataExec = DateTime.Now;
+                }
+                
+                _genericPHCRepository.SaveChanges();
+                return false;
             }
-            else
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx && sqlEx.Number == 2627)
             {
-                jobLock.IsRunning = true;
+                // Violação de chave primária - outro job já inseriu o lock
+                Debug.Print($"Job lock '{lockKey}' já foi criado por outro processo (race condition)");
+                return true; // Job já está em execução
             }
-            _genericPHCRepository.SaveChanges();
-            return false;
+            catch (Exception ex)
+            {
+                Debug.Print($"Erro ao verificar job lock: {ex.Message}");
+                throw;
+            }
         }
 
         public void TerminarJob(string lockKey)
@@ -243,7 +287,19 @@ namespace CFM_PAYMENTSWS.Services
             {
                 Debug.Print($"FALHA GLOBAL SERVICE EXCPETION {ex.Message.ToString()} INNER EXEPTION {ex.InnerException}");
                 var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $"MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
-                logHelper.generateLogJB(response, "ProcessarRecebimentos" + Guid.NewGuid(), "PaymentService.ProcessarRecebimentosAsync", ex.Message);
+                logHelper.generateLogJB(
+                    response,
+                    "ProcessarRecebimentos" + Guid.NewGuid(),
+                    "PaymentService.ProcessarRecebimentosAsync",
+                    ex.Message,
+                    "127.0.0.1",
+                    "Error",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "ProcessReceiptsError");
             }
             finally
             {
@@ -261,19 +317,46 @@ namespace CFM_PAYMENTSWS.Services
 
                 Debug.Print($"u2bpayments.Ref {u2bpayments.Referencia} ");
 
-                Ft ft = await _phcRepository.GetFtByRef(u2bpayments.Referencia);
+                Ft? ft = await _phcRepository.GetFtByRef(u2bpayments.Referencia);
                 if (ft == null)
                 {
-                    throw new Exception("Factura não encontrada para a referência fornecida.");
+                    // Não deve processar pagamento sem fatura - atualizar status para erro
+                    u2bpayments.StatusCode = WebTransactionCodes.INVOICENOTFOUND.cod;
+                    u2bpayments.StatusDescription = WebTransactionCodes.INVOICENOTFOUND.codDesc;
+                    _paymentRespository.updateTransactionStatus(u2bpayments);
+                    // Já é salvo dentro do updateTransactionStatus
+                    
+                    throw new Exception(WebTransactionCodes.INVOICENOTFOUND.codDesc + ". Pagamento não processado.");
                 }
 
-                Cl cl = await _phcRepository.getClienteByNo(ft.No);
+                Cl? cl = await _phcRepository.getClienteByNo(ft.No);
+                if (cl == null)
+                {
+                    // Cliente não encontrado
+                    u2bpayments.StatusCode = WebTransactionCodes.CLIENTNOTFOUND.cod;
+                    u2bpayments.StatusDescription = WebTransactionCodes.CLIENTNOTFOUND.codDesc;
+                    _paymentRespository.updateTransactionStatus(u2bpayments);
+                    // Já é salvo dentro do updateTransactionStatus
+                    
+                    throw new Exception(WebTransactionCodes.CLIENTNOTFOUND.codDesc + ".");
+                }
 
                 List<Cc> contacorrente = new List<Cc>();
                 contacorrente = await _phcRepository.getContaCorrenteByStamp(ft.Ftstamp);
 
                 Debug.Print("Nº do cliente " + cl.No.ToString());
                 Debug.Print($"Conta corrente: {JsonConvert.SerializeObject(contacorrente)}");
+
+                // Validar se existe conta corrente para esta fatura
+                if (!contacorrente.Any())
+                {
+                    u2bpayments.StatusCode = WebTransactionCodes.ACCOUNTNOTFOUND.cod;
+                    u2bpayments.StatusDescription = WebTransactionCodes.ACCOUNTNOTFOUND.codDesc;
+                    _paymentRespository.updateTransactionStatus(u2bpayments);
+                    // Já é salvo dentro do updateTransactionStatus
+                    
+                    throw new Exception(WebTransactionCodes.ACCOUNTNOTFOUND.codDesc + ". Pagamento não processado.");
+                }
 
                 decimal saldo = 0;
                 decimal pagamentoVal = u2bpayments.Valor;
@@ -282,15 +365,34 @@ namespace CFM_PAYMENTSWS.Services
                     saldo = contacorrente.Sum(cc => (cc.Deb - cc.Debf));
 
                 Debug.Print("COUNT DO CC " + contacorrente.Count().ToString());
-                if (pagamentoVal <= saldo)
+                if (pagamentoVal <= saldo || true)
                 {
                     Debug.Print(" APENAS CRIA RECIBO CC");
-                    criarReciboCC(cl,
-                                    pagamentoVal,
-                                    recibos,
-                                    contacorrente,
-                                    u2bpayments
-                                    );
+                    
+                    // Iniciar transação para garantir atomicidade do recibo
+                    var transaction = _genericPHCRepository.BeginTransaction();
+                    try
+                    {
+                        criarReciboCC(cl,
+                                        pagamentoVal,
+                                        recibos,
+                                        contacorrente,
+                                        u2bpayments
+                                        );
+                        
+                        // Commit da transação se tudo correu bem
+                        transaction.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Rollback em caso de erro
+                        transaction.Rollback();
+                        throw new Exception($"Erro ao criar recibo: {ex.Message}", ex);
+                    }
+                    finally
+                    {
+                        transaction.Dispose();
+                    }
                 }
                 else
                 {
@@ -339,6 +441,9 @@ namespace CFM_PAYMENTSWS.Services
                 if (saveChangesresponse.response.cod != "0000")
                     throw new GeneralException(saveChangesresponse);
 
+                // Atualizar status para sucesso APENAS após tudo correr bem
+                u2bpayments.StatusCode = WebTransactionCodes.SUCCESSPAYMENT.cod;
+                u2bpayments.StatusDescription = WebTransactionCodes.SUCCESSPAYMENT.codDesc;
                 _paymentRespository.updateTransactionStatus(u2bpayments);
 
 
@@ -395,7 +500,7 @@ namespace CFM_PAYMENTSWS.Services
             string moeda = _phcRepository.getMoeda();
 
             Debug.Print("Configs" + config.ToString());
-           
+
             Re re = new Re();
 
             re.Restamp = restamp;
@@ -580,6 +685,90 @@ namespace CFM_PAYMENTSWS.Services
             return string.Join(" | ", msgs);
         }
 
+        private string GetCanalNome(int? canal)
+        {
+            if (canal == null)
+                return "Desconhecido";
+
+            var bl = _phcRepository.getBlByCodeprov(canal.Value);
+            if (bl == null || string.IsNullOrWhiteSpace(bl.UBancagr))
+                return "Desconhecido";
+
+            return bl.UBancagr;
+        }
+
+        public void ExpirarPendentesDiaAnterior()
+        {
+            var today = DateTime.Now.Date;
+            var pendentes = _paymentRespository.GetPaymentsQueuePendentesDiaAnterior(today);
+
+            if (pendentes == null || pendentes.Count == 0)
+                return;
+
+            EncryptionHelper encryptionHelper = new EncryptionHelper();
+            var batchIds = pendentes.Select(p => p.BatchId).Distinct().ToList();
+
+            foreach (var batchId in batchIds)
+            {
+                var paymentsBatch = _paymentRespository.GetPaymentsBatchId(batchId);
+                var wspaymentToUpdate = _phcRepository.GetWspayments(batchId);
+
+                foreach (var queueItem in pendentes.Where(p => p.BatchId == batchId))
+                {
+                    var transactionId = encryptionHelper.DecryptText(queueItem.TransactionId ?? "", queueItem.Keystamp ?? "");
+                    var creditAccount = encryptionHelper.DecryptText(queueItem.Destino ?? "", queueItem.Keystamp ?? "");
+                    var beneficiaryName = encryptionHelper.DecryptText(queueItem.BeneficiaryName ?? "", queueItem.Keystamp ?? "");
+                    var debitAccount = encryptionHelper.DecryptText(queueItem.Origem ?? "", queueItem.Keystamp ?? "");
+
+                    var payment = paymentsBatch
+                        .FirstOrDefault(p => p.Transactionid != null && p.Transactionid.Trim() == transactionId.Trim());
+
+                    var canalNome = GetCanalNome(payment?.Canal ?? queueItem.Canal);
+
+                    insere2bHistorico(
+                        transactionId,
+                        batchId,
+                        creditAccount,
+                        beneficiaryName,
+                        queueItem.TransactionDescription ?? "",
+                        queueItem.Moeda ?? "MZN",
+                        queueItem.Valor,
+                        payment?.BankReference ?? "",
+                        debitAccount,
+                        payment?.Oristamp ?? "",
+                        payment?.Tabela ?? "",
+                        payment?.Canal ?? queueItem.Canal,
+                        canalNome,
+                        "",
+                        "",
+                        "9999",
+                        "Pendente expirado"
+                    );
+
+                    if (payment != null)
+                    {
+                        payment.Estado = "Erro";
+                        payment.Descricao = "Pendente expirado";
+                        payment.Usrdata = DateTime.Now;
+                    }
+
+                    _genericPaymentRepository.Delete(queueItem);
+                }
+
+                foreach (var wspayment in wspaymentToUpdate)
+                {
+                    wspayment.Estado = "Erro";
+                    wspayment.Descricao = "Pendente expirado";
+                    wspayment.Usrdata = DateTime.Now;
+
+                    _genericPHCRepository.Update(wspayment);
+                }
+            }
+
+            _genericPaymentRepository.SaveChanges();
+            _genericPHCRepository.SaveChanges();
+        }
+
 
 
         #endregion
@@ -607,8 +796,8 @@ namespace CFM_PAYMENTSWS.Services
 
                     switch (canal)
                     {
-                        
-                        
+
+
                         case 101:
 
                             //pagamentoQueue = _paymentRespository.GetPagamentosEmFila("Por enviar", 101);
@@ -637,7 +826,7 @@ namespace CFM_PAYMENTSWS.Services
                             await FcbProcessing(pagamentos);
                             break;
 
-                            
+
                         case 109:
                             pagamentos = await _paymentRespository.GetPagamentQueue("Por enviar", 109);
                             await MozaProcessing(pagamentos);
@@ -727,8 +916,22 @@ namespace CFM_PAYMENTSWS.Services
 
             Debug.Print("paymentRecordResponseDTOs" + json1);
 
-            logHelper.generateLogJB(new ResponseDTO(), paymentHeader.BatchId, "PaymentService.actualizarPagamentos", json1);
-            
+/*
+            logHelper.generateLogJB(
+                new ResponseDTO(),
+                paymentHeader.BatchId,
+                "PaymentService.actualizarPagamentos",
+                json1,
+                "",
+                "Info",
+                null,
+                "POST",
+                null,
+                null,
+                null,
+                "UpdatePaymentStatus");
+*/
+
             //validarPagamentos
             try
             {
@@ -750,20 +953,68 @@ namespace CFM_PAYMENTSWS.Services
                     {
                         // Verificar se o pagamento já foi processado com sucesso anteriormente
                         var paymentExistente = _paymentRespository.GetPayment(pagamento.TransactionId.Trim(), paymentHeader.BatchId);
-                        
+
                         if (paymentExistente != null && paymentExistente.Estado == "Sucesso")
                         {
                             Debug.Print($"Pagamento {pagamento.TransactionId} já foi processado com sucesso anteriormente. Request ignorado.");
                             logHelper.generateLogJB(
-                                new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento já processado"), null, null), 
-                                paymentHeader.BatchId, 
-                                "PaymentService.actualizarPagamentos - Duplicado Ignorado", 
-                                $"TransactionId: {pagamento.TransactionId}"
-                            );
+                                new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento já processado"), null, null),
+                                paymentHeader.BatchId,
+                                "PaymentService.actualizarPagamentos - Duplicado Ignorado",
+                                $"TransactionId: {pagamento.TransactionId}",
+                                "127.0.0.1",
+                                "Warning",
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                "DuplicatePaymentIgnored");
                             continue; // Ignora este pagamento e passa para o próximo
                         }
 
-                        insere2bHistorico(pagamento.TransactionId.Trim(), paymentHeader.BatchId, paymentHeader.BatchId, paymentHeader.StatusCode, paymentHeader.StatusDescription, pagamento.StatusCode, pagamento.StatusDescription);
+                        // Inserir histórico com dados completos do pagamento
+                        if (paymentExistente != null)
+                        {
+
+                            string canalNome = paymentExistente.Canal switch
+                            {
+                                105 => "NEDBANK",
+                                106 => "BCI",
+                                107 => "BIM",
+                                108 => "FCB",
+                                109 => "MOZA",
+                                _ => "Desconhecido"
+                            };
+
+                            insere2bHistorico(
+                                pagamento.TransactionId.Trim(),
+                                paymentHeader.BatchId,
+                                paymentExistente.Destino ?? "",  // NIB de crédito/destino
+                                /*
+                                paymentExistente.BeneficiaryName ?? "",
+                                paymentExistente.TransactionDescription ?? "",
+                                */
+                                "", "", // BeneficiaryName e TransactionDescription não estão disponíveis na tabela de pagamentos, então deixamos vazios no histórico
+                                paymentExistente.Moeda ?? "MZN",
+                                paymentExistente.Valor,
+                                pagamento.BankReference ?? "",
+                                paymentExistente.Origem ?? "",  // Conta de débito/origem
+                                paymentExistente.Oristamp ?? "",
+                                paymentExistente.Tabela ?? "",
+                                paymentExistente.Canal,
+                                canalNome,
+                                paymentHeader.StatusCode,
+                                paymentHeader.StatusDescription,
+                                pagamento.StatusCode,
+                                pagamento.StatusDescription
+                            );
+
+                        }
+                        else
+                        {
+                            Debug.Print($"AVISO: Pagamento {pagamento.TransactionId} não encontrado na base. Histórico não será inserido.");
+                        }
 
                         switch (pagamento.StatusCode)
                         {
@@ -888,22 +1139,49 @@ namespace CFM_PAYMENTSWS.Services
                 Debug.Print("Resposta do Load");
                 Debug.Print(bimResponse.ToString());
 
-                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, bimResponse.response.cod, bimResponse.response.codDesc, "", "");
+
+                var paymentsBatch = _paymentRespository.GetPaymentsBatchId(pagamento.payment.BatchId);
+
+                // Inserir histórico com dados completos para cada payment record
+                foreach (var paymentRecord in pagamento.payment.PaymentRecords)
+                {
+                    // Filtrar em memória pelo TransactionId
+                    var payment = paymentsBatch.FirstOrDefault(p => p.Transactionid?.Trim() == paymentRecord.TransactionId.Trim());
+
+                    insere2bHistorico(
+                        paymentRecord.TransactionId,
+                        pagamento.payment.BatchId,
+                        paymentRecord.CreditAccount,
+                        paymentRecord.BeneficiaryName,
+                        paymentRecord.TransactionDescription,
+                        paymentRecord.Currency,
+                        paymentRecord.Amount,
+                        "",
+                        pagamento.payment.DebitAccount,
+                        payment?.Oristamp ?? "",
+                        payment?.Tabela ?? "",
+                        107,
+                        "BIM","","",
+                        bimResponse.response.cod,
+                        bimResponse.response.codDesc
+                    );
+                }
 
                 Debug.Print("insere2bHistorico");
 
                 switch (bimResponse.response.cod)
                 {
 
-                    case "0" or "0000":
+                    case "0" or "0000" or "0016" or "1001":
                         actualizarEstadoDoPagamento(pagamento, "Por processar", "Pagamento enviado por processar");
                         Debug.Print("Teste Por processar" + bimResponse.response.codDesc);
                         break;
 
                     case "2028":
-                        actualizarEstadoDoPagamento(pagamento, "Erro", bimResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Por Corrigir", bimResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + bimResponse.response.codDesc);
                         break;
+
                     default:
                         actualizarEstadoDoPagamento(pagamento, "Erro", bimResponse.response.codDesc);
                         Debug.Print("Teste HS3 - Erro: " + bimResponse.response.codDesc);
@@ -911,8 +1189,19 @@ namespace CFM_PAYMENTSWS.Services
 
                 }
 
-
-                logHelper.generateLogJB(bimResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - Bim", pagamento.payment);
+                logHelper.generateLogJB(
+                    bimResponse,
+                    pagamento.payment.BatchId,
+                    "PaymentService.processarPagamento - Bim",
+                    pagamento.payment,
+                    "127.0.0.1",
+                    "",
+                    "BIM",
+                    "POST",
+                    bimResponseDTO.HttpStatusCode,
+                    bimResponseDTO.DurationMs,
+                    bimResponseDTO.EndpointUrl,
+                    "LoadPayment");
 
             }
 
@@ -933,7 +1222,33 @@ namespace CFM_PAYMENTSWS.Services
 
                     ResponseDTO fcbResponse = routeMapper.mapLoadPaymentResponse(108, fcbResponseDTO);
 
-                    insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, fcbResponse.response.cod, fcbResponse.response.codDesc, "", "");
+
+                    var paymentsBatch = _paymentRespository.GetPaymentsBatchId(pagamento.payment.BatchId);
+
+                    // Inserir histórico com dados completos para cada payment record
+                    foreach (var paymentRecord in pagamento.payment.PaymentRecords)
+                    {
+                        // Filtrar em memória pelo TransactionId
+                        var payment = paymentsBatch.FirstOrDefault(p => p.Transactionid?.Trim() == paymentRecord.TransactionId.Trim());
+
+                        insere2bHistorico(
+                            paymentRecord.TransactionId,
+                            pagamento.payment.BatchId,
+                            paymentRecord.CreditAccount,
+                            paymentRecord.BeneficiaryName,
+                            paymentRecord.TransactionDescription,
+                            paymentRecord.Currency,
+                            paymentRecord.Amount,
+                            "",
+                            pagamento.payment.DebitAccount,
+                            payment?.Oristamp ?? "",
+                            payment?.Tabela ?? "",
+                            108,
+                            "FCB","","",
+                            fcbResponse.response.cod,
+                            fcbResponse.response.codDesc
+                        );
+                    }
 
                     switch (fcbResponse.response.cod)
                     {
@@ -946,13 +1261,37 @@ namespace CFM_PAYMENTSWS.Services
                             break;
                     }
 
-                    logHelper.generateLogJB(fcbResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - FCB", fcbPayment);
+                    logHelper.generateLogJB(
+                        fcbResponse,
+                        pagamento.payment.BatchId,
+                        "PaymentService.processarPagamento - FCB",
+                        fcbPayment,
+                        "127.0.0.1",
+                        "",
+                        "FCB",
+                        "POST",
+                        fcbResponseDTO.HttpStatusCode,
+                        fcbResponseDTO.DurationMs,
+                        fcbResponseDTO.EndpointUrl,
+                        "LoadPayment");
                 }
                 catch (Exception ex)
                 {
                     var response = new ResponseDTO(new ResponseCodesDTO("0007", "Erro no processamento com o FCB"), ex.Message, null);
                     actualizarEstadoDoPagamento(pagamento, "Erro", ex.Message);
-                    logHelper.generateLogJB(response, pagamento.payment.BatchId, "PaymentService.processarPagamento - FCB", fcbPayment);
+                    logHelper.generateLogJB(
+                        response,
+                        pagamento.payment.BatchId,
+                        "PaymentService.processarPagamento - FCB",
+                        fcbPayment,
+                        "127.0.0.1",
+                        "Error",
+                        "FCB",
+                        "POST",
+                        null,
+                        null,
+                        null,
+                        "LoadPayment");
                 }
             }
         }
@@ -964,7 +1303,6 @@ namespace CFM_PAYMENTSWS.Services
             foreach (var pagamento in pagamentos)
             {
 
-                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, "bciResponse.response.cod", "bciResponse.response.codDesc", "", "");
                 BCIAPI bciRepository = new BCIAPI();
 
                 PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase(pagamento.payment);
@@ -982,21 +1320,44 @@ namespace CFM_PAYMENTSWS.Services
                     bciResponseDTO = bciRepository.loadPayments(paymentCamel);
                 }
 
-
-
                 ResponseDTO bciResponse = routeMapper.mapLoadPaymentResponse(106, bciResponseDTO);
-
 
                 Debug.Print("Resposta do Load");
                 Debug.Print(bciResponse.ToString());
 
-                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, bciResponse.response.cod, bciResponse.response.codDesc, "", "");
+                var paymentsBatch = _paymentRespository.GetPaymentsBatchId(pagamento.payment.BatchId);
+
+                // Inserir histórico com dados completos para cada payment record
+                foreach (var paymentRecord in pagamento.payment.PaymentRecords)
+                {
+                    // Filtrar em memória pelo TransactionId
+                    var payment = paymentsBatch.FirstOrDefault(p => p.Transactionid?.Trim() == paymentRecord.TransactionId.Trim());
+
+                    insere2bHistorico(
+                        paymentRecord.TransactionId,
+                        pagamento.payment.BatchId,
+                        paymentRecord.CreditAccount,
+                        paymentRecord.BeneficiaryName,
+                        paymentRecord.TransactionDescription,
+                        paymentRecord.Currency,
+                        paymentRecord.Amount,
+                        "",
+                        pagamento.payment.DebitAccount,
+                        payment?.Oristamp ?? "",
+                        payment?.Tabela ?? "",
+                        106,
+                        "BCI","","",
+                        bciResponse.response.cod,
+                        bciResponse.response.codDesc
+                        
+                    );
+                }
 
 
                 switch (bciResponse.response.cod)
                 {
                     case "2028":
-                        actualizarEstadoDoPagamento(pagamento, "Erro", bciResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Por Corrigir", bciResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + bciResponse.response.codDesc);
                         break;
 
@@ -1013,7 +1374,19 @@ namespace CFM_PAYMENTSWS.Services
                 }
 
 
-                logHelper.generateLogJB(bciResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - BCI", paymentCamel);
+                logHelper.generateLogJB(
+                    bciResponse,
+                    pagamento.payment.BatchId,
+                    "PaymentService.processarPagamento - BCI",
+                    paymentCamel,
+                    "127.0.0.1",
+                    "",
+                    "BCI",
+                    "POST",
+                    bciResponseDTO.HttpStatusCode,
+                    bciResponseDTO.DurationMs,
+                    bciResponseDTO.EndpointUrl,
+                    "LoadPayment");
 
             }
 
@@ -1025,14 +1398,12 @@ namespace CFM_PAYMENTSWS.Services
             foreach (var pagamento in pagamentos)
             {
 
-                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, "MozaProcessing.response.cod", "MozaProcessing.response.codDesc", "", "");
                 var mozaRepository = new Providers.Moza.Repository.MozaAPI();
 
                 PaymentCamelCase paymentCamel = apiHelper.ConvertPaymentToCamelCase_MOZA(pagamento.payment);
 
                 Debug.Print($"paymentCamelMoza {paymentCamel}");
 
-                
                 var mozaResponseDTO = await mozaRepository.LoadPaymentsAsync(paymentCamel);
 
                 ResponseDTO mozaResponse = routeMapper.mapLoadPaymentResponse(109, mozaResponseDTO);
@@ -1040,13 +1411,38 @@ namespace CFM_PAYMENTSWS.Services
                 Debug.Print("Resposta do Load");
                 Debug.Print(mozaResponse.ToString());
 
-                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, mozaResponse.response.cod, mozaResponse.response.codDesc, "", "");
+                var paymentsBatch = _paymentRespository.GetPaymentsBatchId(pagamento.payment.BatchId);
+
+                // Inserir histórico com dados completos para cada payment record
+                foreach (var paymentRecord in pagamento.payment.PaymentRecords)
+                {
+                    // Filtrar em memória pelo TransactionId
+                    var payment = paymentsBatch.FirstOrDefault(p => p.Transactionid?.Trim() == paymentRecord.TransactionId.Trim());
+
+                    insere2bHistorico(
+                        paymentRecord.TransactionId,
+                        pagamento.payment.BatchId,
+                        paymentRecord.CreditAccount,
+                        paymentRecord.BeneficiaryName,
+                        paymentRecord.TransactionDescription,
+                        paymentRecord.Currency,
+                        paymentRecord.Amount,
+                        "",
+                        pagamento.payment.DebitAccount,
+                        payment?.Oristamp ?? "",
+                        payment?.Tabela ?? "",
+                        109,
+                        "MOZA","","",
+                        mozaResponse.response.cod,
+                        mozaResponse.response.codDesc
+                    );
+                }
 
 
                 switch (mozaResponse.response.cod)
                 {
                     case "2028":
-                        actualizarEstadoDoPagamento(pagamento, "Erro", mozaResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Por Corrigir", mozaResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + mozaResponse.response.codDesc);
                         break;
 
@@ -1062,9 +1458,19 @@ namespace CFM_PAYMENTSWS.Services
 
                 }
 
-
-                logHelper.generateLogJB(mozaResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - MOZA", paymentCamel);
-
+                logHelper.generateLogJB(
+                    mozaResponse,
+                    pagamento.payment.BatchId,
+                    "PaymentService.processarPagamento - MOZA",
+                    paymentCamel,
+                    "127.0.0.1",
+                    "",
+                    "MOZA",
+                    "POST",
+                    mozaResponseDTO.HttpStatusCode,
+                    mozaResponseDTO.DurationMs,
+                    mozaResponseDTO.EndpointUrl,
+                    "LoadPayment");
             }
 
         }
@@ -1083,12 +1489,38 @@ namespace CFM_PAYMENTSWS.Services
                 Debug.Print("Resposta do Load");
                 Debug.Print(nedbankResponse.ToString());
 
-                insere2bHistorico("", pagamento.payment.BatchId, pagamento.payment.BatchId, nedbankResponse.response.cod, nedbankResponse.response.codDesc, "", "");
+
+                var paymentsBatch = _paymentRespository.GetPaymentsBatchId(pagamento.payment.BatchId);
+
+                // Inserir histórico com dados completos para cada payment record
+                foreach (var paymentRecord in pagamento.payment.PaymentRecords)
+                {
+                    // Filtrar em memória pelo TransactionId
+                    var payment = paymentsBatch.FirstOrDefault(p => p.Transactionid?.Trim() == paymentRecord.TransactionId.Trim());
+
+                    insere2bHistorico(
+                        paymentRecord.TransactionId,
+                        pagamento.payment.BatchId,
+                        paymentRecord.CreditAccount,
+                        paymentRecord.BeneficiaryName,
+                        paymentRecord.TransactionDescription,
+                        paymentRecord.Currency,
+                        paymentRecord.Amount,
+                        "",
+                        pagamento.payment.DebitAccount,
+                        payment?.Oristamp ?? "",
+                        payment?.Tabela ?? "",
+                        105,
+                        "NEDBANK","","",
+                        nedbankResponse.response.cod,
+                        nedbankResponse.response.codDesc
+                    );
+                }
 
                 switch (nedbankResponse.response.cod)
                 {
                     case "0011":
-                        actualizarEstadoDoPagamento(pagamento, "Erro", nedbankResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Por Corrigir", nedbankResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir" + nedbankResponse.response.codDesc);
                         break;
 
@@ -1098,7 +1530,7 @@ namespace CFM_PAYMENTSWS.Services
                         break;
 
                     case "0010":
-                        actualizarEstadoDoPagamento(pagamento, "Erro", nedbankResponse.response.codDesc);
+                        actualizarEstadoDoPagamento(pagamento, "Por Corrigir", nedbankResponse.response.codDesc);
                         Debug.Print("Teste Por Corrigir - Erro 0010: " + nedbankResponse.response.codDesc);
                         break;
 
@@ -1113,7 +1545,19 @@ namespace CFM_PAYMENTSWS.Services
                         break;
 
                 }
-                logHelper.generateLogJB(nedbankResponse, pagamento.payment.BatchId, "PaymentService.processarPagamento - nedbank", pagamento.payment);
+                logHelper.generateLogJB(
+                    nedbankResponse,
+                    pagamento.payment.BatchId,
+                    "PaymentService.processarPagamento - nedbank",
+                    pagamento.payment,
+                    "127.0.0.1",
+                    "",
+                    "NEDBANK",
+                    "POST",
+                    nedbankResponseDTO.HttpStatusCode,
+                    nedbankResponseDTO.DurationMs,
+                    nedbankResponseDTO.EndpointUrl,
+                    "LoadPayment");
 
             }
 
@@ -1133,14 +1577,12 @@ namespace CFM_PAYMENTSWS.Services
                     //var response = await providerRoute.paymentProviderRoute(pagamento);
                     //logHelper.generateLogJB(response, pagamento.transactionId, "PaymentService.processarPagamento");
                     Debug.Print($"ESTADO DO PAGAMENTO {response.ToString()}");
-                    //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
 
                     switch (estadoDoPagamento.response.cod)
                     {
                         case "00077":
                             response = await mpesaApi.B2CpaymentProviderRoute(pagamento);
                             Debug.Print($"RESPOSTA DO PAGAMENTO 00077 {response.ToString()}");
-                            logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
                             actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
 
                             break;
@@ -1149,7 +1591,6 @@ namespace CFM_PAYMENTSWS.Services
                         case "0000":
                             Debug.Print($"Pagamento Existente");
                             response = new ResponseDTO(new ResponseCodesDTO("0000", "Success"), estadoDoPagamento.Data, pagamento.ToString());
-                            logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
                             actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
 
                             break;
@@ -1158,7 +1599,6 @@ namespace CFM_PAYMENTSWS.Services
 
                             response = await mpesaApi.B2CpaymentProviderRoute(pagamento);
                             Debug.Print($"RESPOSTA DO PAGAMENTO 0002 {response.ToString()}");
-                            logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
                             actualizarEstadoDoPagamentoByTransactionId("Sucesso", "Pagamento efectuado com sucesso.", pagamento);
 
                             break;
@@ -1173,10 +1613,6 @@ namespace CFM_PAYMENTSWS.Services
                     Debug.Print($" ERRO ao processar o pagamento com transactionId {pagamento.TransactionId.ToString()}   MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}");
 
                     var response = new ResponseDTO(new ResponseCodesDTO("0007", "Internal error"), $" ERRO ao processar o pagamento com transactionId {pagamento.TransactionId.ToString()}   MESSAGE :{ex.Message} STACK:{ex.StackTrace} INNER{ex.InnerException}", null);
-
-                    logHelper.generateLogJB_PHC(response, pagamento.TransactionId, "PaymentService.processarPagamento");
-
-
                 }
             }
 
@@ -1231,35 +1667,24 @@ namespace CFM_PAYMENTSWS.Services
                 //var response = await providerRoute.paymentProviderRoute(pagamento);
                 //logHelper.generateLogJB(response, pagamento.transactionId, "PaymentService.processarPagamento");
                 Debug.Print($"ESTADO DO PAGAMENTO {response}");
-                //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
 
                 switch (estadoDoPagamento.response.cod)
                 {
                     case "00077":
                         response = await mpesaApi.C2BPaymentProviderRoute(pagamento);
                         Debug.Print($"RESPOSTA DO PAGAMENTO 00077 {(response.Data as Response)?.Description}");
-                        logHelper.generateLogJB_PHC(response, pagamento.Referencia, "PaymentService.processarPagamento");
-
-                        //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
                         break;
-
 
                     case "0000":
                     case "000":
                         Debug.Print($"Pagamento Existente  {(response.Data as Response)?.Description} .");
                         response = new ResponseDTO(new ResponseCodesDTO("0000", "Success"), estadoDoPagamento.Data, pagamento.ToString());
-                        logHelper.generateLogJB_PHC(response, pagamento.Referencia, "PaymentService.processarPagamento");
-
-                        //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
                         break;
 
                     case "0002":
 
                         response = await mpesaApi.C2BPaymentProviderRoute(pagamento);
                         Debug.Print($"RESPOSTA DO PAGAMENTO  0002  {response}");
-                        logHelper.generateLogJB_PHC(response, pagamento.Referencia, "PaymentService.processarPagamento");
-
-                        //_iPaymentRespository.actualizarEstadoDoPagamento(pagamento, response);
                         break;
 
                 }
@@ -1281,8 +1706,6 @@ namespace CFM_PAYMENTSWS.Services
                 Debug.Print($"GetGLTransactions ERROR {errorDTO}");
                 var finalResponse = new ResponseDTO(new ResponseCodesDTO("0007", "Error", logHelper.generateResponseID()), errorDTO.ToString(), null);
                 //logHelper.generateResponseLogJB(finalResponse, logHelper.generateResponseID().ToString(), "GetGLTransactions", errorDTO?.ToString());
-                logHelper.generateLogJB_PHC(finalResponse, logHelper.generateResponseID().ToString(), "GetGLTransactions");
-
                 respostaDTO = new RespostaDTO("", "0007", errorDTO.message);
                 return respostaDTO;
             }
@@ -1324,7 +1747,7 @@ namespace CFM_PAYMENTSWS.Services
                 wspayment.Usrdata = DateTime.Now;
                 wspayment.Bankreference = pagamento.BankReference;
             }
-            
+
             // Eliminar sempre da Queue após ter resultado do banco (sucesso ou erro)
             if (paymentQueue != null)
             {
@@ -1385,7 +1808,7 @@ namespace CFM_PAYMENTSWS.Services
             {
                 trfb.Rdata = processingDate;
             }
-            
+
             _genericPaymentRepository.SaveChanges();
             _genericPHCRepository.SaveChanges();
 
@@ -1502,83 +1925,153 @@ namespace CFM_PAYMENTSWS.Services
             var paymentQueueToUpdate = _paymentRespository.GetPaymentsQueueBatchId(u2BPayments.payment.BatchId);
             var wspaymentToUpdate = _phcRepository.GetWspayments(u2BPayments.payment.BatchId);
 
+            var isErro = estado == "Erro";
+            var isPorCorrigir = isErro && !string.IsNullOrWhiteSpace(descricao)
+                && descricao.Contains("Por Corrigir", StringComparison.OrdinalIgnoreCase);
+
+            var estadoPersist = (isErro && !isPorCorrigir) ? "Por Enviar" : estado;
+            var descricaoPersist = (isErro && !isPorCorrigir) ? "Pagamento aprovado e por enviar" : descricao;
+
             foreach (var payment in paymentsToUpdate)
             {
-                payment.Estado = estado;
-                payment.Descricao = descricao;
+                payment.Estado = estadoPersist;
+                payment.Descricao = descricaoPersist;
                 payment.Usrdata = DateTime.Now;
             }
 
             foreach (var paymentQueue in paymentQueueToUpdate)
             {
-                paymentQueue.Estado = estado;
-                paymentQueue.Descricao = descricao;
+                paymentQueue.Estado = estadoPersist;
+                paymentQueue.Descricao = descricaoPersist;
                 paymentQueue.Usrdata = DateTime.Now;
             }
 
             foreach (var wspayment in wspaymentToUpdate)
             {
-                wspayment.Estado = estado;
-                wspayment.Descricao = descricao;
+                wspayment.Estado = estadoPersist;
+                wspayment.Descricao = descricaoPersist;
                 wspayment.Usrdata = DateTime.Now;
 
                 _genericPHCRepository.Update(wspayment);
                 _genericPHCRepository.SaveChanges();
             }
 
-            // Eliminar sempre da Queue após ter resultado do banco (sucesso ou erro)
-            foreach (var paymentQueue in paymentQueueToUpdate)
+            // Eliminar da Queue apenas quando o envio foi bem sucedido
+            // ou quando o erro é "Por Corrigir" (parametrizado)
+            if (estadoPersist == "Por processar" || estadoPersist == "Sucesso" || isPorCorrigir)
             {
-                _genericPaymentRepository.Delete(paymentQueue);
-                Debug.Print($"Pagamento com BatchId {u2BPayments.payment.BatchId} eliminado da Queue após processamento. Estado: {estado}");
+                foreach (var paymentQueue in paymentQueueToUpdate)
+                {
+                    _genericPaymentRepository.Delete(paymentQueue);
+                    Debug.Print($"Pagamento com BatchId {u2BPayments.payment.BatchId} eliminado da Queue. Estado: {estadoPersist}");
+                }
             }
 
             _genericPaymentRepository.SaveChanges();
         }
 
-        public void insere2bHistorico(string transactionId, string batchid, string oristamp, string codStatusHs, string descStatusHs, string codStatus, string descStatus)
+        /// <summary>
+        /// Insere histórico de alteração de estado do pagamento na tabela u_2b_payments_hs.
+        /// Garante rastreamento completo e sequencial de todas as alterações de estado.
+        /// </summary>
+        /// <param name="transactionId">ID da transação (obrigatório)</param>
+        /// <param name="batchId">ID do lote (obrigatório)</param>
+        /// <param name="creditAccount">Conta de crédito/NIB destino (obrigatório)</param>
+        /// <param name="beneficiaryName">Nome do beneficiário</param>
+        /// <param name="transactionDescription">Descrição da transação</param>
+        /// <param name="currency">Moeda</param>
+        /// <param name="amount">Valor do pagamento</param>
+        /// <param name="bankReference">Referência bancária</param>
+        /// <param name="debitAccount">Conta de débito/origem</param>
+        /// <param name="oristamp">Stamp do documento de origem (PO/PD/OW/TB)</param>
+        /// <param name="tabela">Tabela de origem (PO/PD/OW/TB)</param>
+        /// <param name="canal">Código do canal/banco (105-NEDBANK, 106-BCI, 107-BIM, 108-FCB, 109-MOZA)</param>
+        /// <param name="canalNome">Nome do canal/banco</param>
+        /// <param name="statusCodeHs">Código do estado retornado pelo banco</param>
+        /// <param name="statusDescriptionHs">Descrição do estado retornado pelo banco</param>
+        /// <param name="statusCode">Código do estado interno do pagamento</param>
+        /// <param name="statusDescription">Descrição do estado interno do pagamento</param>
+        public void insere2bHistorico(
+            string transactionId,
+            string batchId,
+            string creditAccount,
+            string beneficiaryName,
+            string transactionDescription,
+            string currency,
+            decimal amount,
+            string bankReference,
+            string debitAccount,
+            string oristamp,
+            string tabela,
+            int? canal,
+            string? canalNome,
+            string statusCodeHs,
+            string statusDescriptionHs,
+            string statusCode,
+            string statusDescription)
         {
-            Debug.Print("Insere HS na actualizacao");
+            // Validações de campos obrigatórios
+            if (string.IsNullOrWhiteSpace(transactionId))
+            {
+                Debug.Print("ERRO: TransactionId é obrigatório para inserir histórico");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(batchId))
+            {
+                Debug.Print("ERRO: BatchId é obrigatório para inserir histórico");
+                return;
+            }
+
+            Debug.Print($"Insere histórico - TransactionId: {transactionId}, BatchId: {batchId}, Canal: {canalNome ?? "N/A"}, Status: {statusCode}");
+
             string stampHs = 25.UseThisSizeForStamp();
-            //U2bPaymentsHs u2Bhistoric = new U2bPaymentsHs { transactionId, "", "", "", "", 0, "", codStatus, descStatus, batchid, DateTime.Now, codStatusHs, descStatusHs, stampHs, "", DateTime.Now };
 
             if (_genericPaymentRepository == null)
             {
                 throw new InvalidOperationException("O repositório foi descartado antes da chamada.");
             }
+
             U2bPaymentsHs u2Bhistoric = new U2bPaymentsHs
             {
                 TransactionId = transactionId,
-                CreditAccount = "",
-                BeneficiaryName = "",
-                TransactionDescription = "",
-                Currency = "",
-                Amount = 0,
-                BankReference = "",
-                StatusCode = codStatus,
-                StatusDescription = descStatus,
-                BatchId = batchid,
+                CreditAccount = creditAccount,
+                BeneficiaryName = beneficiaryName ?? "",
+                TransactionDescription = transactionDescription ?? "",
+                Currency = currency ?? "",
+                Amount = amount,
+                BankReference = bankReference ?? "",
+                StatusCode = statusCode ?? "",
+                StatusDescription = statusDescription ?? "",
+                BatchId = batchId,
                 ProcessingDate = DateTime.Now,
-                StatusCodeHs = codStatusHs,
-                StatusDescriptionHs = descStatusHs,
+                StatusCodeHs = statusCodeHs ?? "",
+                StatusDescriptionHs = statusDescriptionHs ?? "",
                 U2bPaymentsHsstamp = stampHs,
-                DebitAccount = "",
-                Ousrdata = DateTime.Now
+                DebitAccount = debitAccount ?? "",
+                Ousrdata = DateTime.Now,
+                Oristamp = oristamp ?? "",
+                Tabela = tabela,
+                Canal = canal,
+                CanalNome = canalNome
             };
-
 
             try
             {
                 _genericPaymentRepository.Add(u2Bhistoric);
                 _genericPaymentRepository.SaveChanges();
-                Debug.Print("Insere HS na actualizacao   SaveChanges");
+                Debug.Print($"Histórico inserido com sucesso - Stamp: {stampHs}");
             }
             catch (ObjectDisposedException ex)
             {
-                Debug.Print("Erro: " + ex.Message);
+                Debug.Print("Erro ao inserir histórico: " + ex.Message);
                 throw;
             }
-
+            catch (Exception ex)
+            {
+                Debug.Print($"Erro inesperado ao inserir histórico: {ex.Message}");
+                throw;
+            }
         }
 
         public RespostaDTO GerarResposta(Response response, decimal responseID)

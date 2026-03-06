@@ -37,6 +37,10 @@ namespace CFM_PAYMENTSWS.Providers.FCB.DTOs
         [JsonProperty("resultInfo")]
         public FcbResultInfoDTO ResultInfo { get; set; } = new();
 
+        public int? HttpStatusCode { get; set; }
+        public int? DurationMs { get; set; }
+        public string EndpointUrl { get; set; }
+
         public override string ToString() => JsonConvert.SerializeObject(this);
     }
 

@@ -7,5 +7,6 @@ namespace CFM_PAYMENTSWS.Domains.Models
     {
         public string JobId { get; set; } = null!;
         public bool IsRunning { get; set; }
+        public DateTime DataExec { get; set; }
     }
 }

@@ -167,6 +167,13 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                 .FirstOrDefault();
         }
 
+        public Bl getBlByCodeprov(int codeprov)
+        {
+            return _context.Set<Bl>()
+                .Where(bl => bl.UCodeprov == codeprov)
+                .FirstOrDefault();
+        }
+
         public void addRecibo(Re recibocc)
         {
             _context.Set<Re>().Add(recibocc);

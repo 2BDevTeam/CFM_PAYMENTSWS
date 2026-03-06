@@ -24,6 +24,11 @@ namespace CFM_PAYMENTSWS.MiddleWares
 
         public async Task Invoke(HttpContext context)
         {
+            var stopwatch = Stopwatch.StartNew();
+            string ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "";
+            string httpMethod = context.Request.Method;
+            string endpointUrl = $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}";
+            
             try
             {
                 MemoryStream responseBody = null;
@@ -39,6 +44,8 @@ namespace CFM_PAYMENTSWS.MiddleWares
                     responseBody = new MemoryStream();
                     context.Response.Body = responseBody;
                     await _next.Invoke(context);
+                    
+                    stopwatch.Stop();
 
                    
                     responseBody.Seek(0, SeekOrigin.Begin);
@@ -60,7 +67,19 @@ namespace CFM_PAYMENTSWS.MiddleWares
                     //generateResponseLog(ResponseDTO response, string requestId, string operation,string responseText)
                    
 
-                    logHelper.generateLogJB(finalResponse, finalResponse?.response?.id.ToString(), $"{controllerName}/{operationName}", responseText);
+                    logHelper.generateLogJB(
+                        finalResponse, 
+                        finalResponse?.response?.id.ToString(), 
+                        $"{controllerName}/{operationName}", 
+                        responseText,
+                        ipAddress,
+                        null, // logLevel - será determinado automaticamente
+                        null, // sourceBank - será preenchido em outros logs
+                        httpMethod,
+                        context.Response.StatusCode,
+                        (int)stopwatch.ElapsedMilliseconds,
+                        endpointUrl,
+                        $"{controllerName}.{operationName}");
                     finalResponse.Content = null;
 
                     if(tmpResponse?.response!=null)
@@ -99,12 +118,25 @@ namespace CFM_PAYMENTSWS.MiddleWares
                 // Create a ResponseDTO for the
                 // 
 
+                stopwatch.Stop();
                 string controllerName = context.GetRouteData().Values["controller"]?.ToString();
                 string operationName = context.GetRouteData().Values["action"]?.ToString();
                 var finalResponse = new ResponseDTO(new ResponseCodesDTO("0007", "Exp", 1222), null, null);
                 
                 var errorDTO = new ErrorDTO { message = ex?.Message, stack = ex?.StackTrace?.ToString(), inner = ex?.InnerException?.ToString() };
-                logHelper.generateLogJB(finalResponse, finalResponse?.response?.id.ToString(), $"{controllerName}/{operationName}", errorDTO.ToString());
+                logHelper.generateLogJB(
+                    finalResponse, 
+                    finalResponse?.response?.id.ToString(), 
+                    $"{controllerName}/{operationName}", 
+                    errorDTO.ToString(),
+                    ipAddress,
+                    "Error",
+                    null,
+                    httpMethod,
+                    StatusCodes.Status500InternalServerError,
+                    (int)stopwatch.ElapsedMilliseconds,
+                    endpointUrl,
+                    $"{controllerName}.{operationName}");
 
 
                 // Serialize the errorResponseDto to JSON

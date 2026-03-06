@@ -19,12 +19,14 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
 
         public BCIResponseDTO loadPayments(PaymentCamelCase payment)
         {
+            var stopwatch = Stopwatch.StartNew();
 
             try
             {
                 string result = "";
 
                 HttpWebRequest httpWebRequest = httpHelper.getHttpWebRequestByProvider(106, "loadPayments", "");
+                var endpointUrl = httpWebRequest.RequestUri.ToString();
 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
@@ -45,6 +47,7 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
                 }
 
                 var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                var httpStatusCode = (int)httpResponse.StatusCode;
 
                 StreamReader streamReader = new System.IO.StreamReader(httpResponse.GetResponseStream());
 
@@ -58,12 +61,17 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
                     throw new Exception();
                 }
 
+                stopwatch.Stop();
+                response.HttpStatusCode = httpStatusCode;
+                response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                response.EndpointUrl = endpointUrl;
 
                 return response;
             }
 
             catch (WebException ex)
             {
+                stopwatch.Stop();
                 int statusCode = 500;
                 Debug.Print($"WEB EXCPPP {ex.ToString()} ");
                 Debug.Print("CODIGO DE RESPOSTA" + ex.Status.ToString());
@@ -74,7 +82,11 @@ namespace CFM_PAYMENTSWS.Providers.BCI.Repository
                     Debug.Print("A solicitação web retornou o código de erro: " + statusCode);
                 }
 
-                return new BCIResponseDTO(payment.BatchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
+                var response = new BCIResponseDTO(payment.BatchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
+                response.HttpStatusCode = statusCode;
+                response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                response.EndpointUrl = httpHelper.getHttpWebRequestByProvider(106, "loadPayments", "").RequestUri.ToString();
+                return response;
 
             }
             catch (Exception ex)

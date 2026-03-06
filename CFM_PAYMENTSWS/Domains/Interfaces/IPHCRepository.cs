@@ -32,6 +32,7 @@ namespace CFM_PAYMENTSWS.Domains.Interfaces
         Tsre getConfiguracaoRecibo();
         
         Bl getBlByBancagr(string bancagroup);
+        Bl getBlByCodeprov(int codeprov);
 
         string getMoeda();
 

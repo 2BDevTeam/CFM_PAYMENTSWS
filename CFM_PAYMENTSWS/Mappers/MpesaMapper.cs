@@ -13,6 +13,7 @@ namespace CFM_PAYMENTSWS.Mappers
             var config = new MapperConfiguration(cfg =>
                 cfg.CreateMap<Response, ResponseDTO>()
                 .ForPath(dest => dest.response, act => act.MapFrom(src => new ResponseCodesDTO((src.Code == "INS-0" ? "0000" : "0002"), src.IsSuccessfully ? "Success" : "Error")))
+                .ForPath(dest => dest.Content, act => act.MapFrom(src => src.Description))
                 .ForPath(dest => dest.Data, act => act.MapFrom(src => src)
                 ));
             var mapper = new Mapper(config);
@@ -26,6 +27,7 @@ namespace CFM_PAYMENTSWS.Mappers
             {
                 cfg.CreateMap<Response, ResponseDTO>()
                     .ForPath(dest => dest.response, act => act.MapFrom(src => getQueryResponse(src).response))
+                    .ForPath(dest => dest.Content, act => act.MapFrom(src => src.Description))
                     .ForPath(dest => dest.Data, act => act.MapFrom(src => src));
             });
             var mapper = new Mapper(config);

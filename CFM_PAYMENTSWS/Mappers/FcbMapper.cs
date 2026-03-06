@@ -12,7 +12,11 @@ namespace CFM_PAYMENTSWS.Mappers
             var config = new MapperConfiguration(cfg =>
                 cfg.CreateMap<FcbResponseDTO, ResponseDTO>()
                     .ForPath(dest => dest.response, act => act.MapFrom(src => GetStatusCode(src)))
+                    .ForPath(dest => dest.Content, act => act.MapFrom(src => fcbResponse.Description))
                     .ForPath(dest => dest.Data, act => act.MapFrom(_ => fcbResponse.ToString()))
+                    .ForPath(dest => dest.HttpStatusCode, act => act.MapFrom(src => fcbResponse.HttpStatusCode))
+                    .ForPath(dest => dest.DurationMs, act => act.MapFrom(src => fcbResponse.DurationMs))
+                    .ForPath(dest => dest.EndpointUrl, act => act.MapFrom(src => fcbResponse.EndpointUrl))
             );
 
             var mapper = new Mapper(config);

@@ -260,17 +260,70 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
 
             modelBuilder.Entity<Log>(entity =>
             {
-
                 entity.HasKey(e => e.u_logstamp);
                 entity.ToTable("u_logs");
-                entity.Property(e => e.u_logstamp).HasColumnName("u_logsstamp");
-                entity.Property(e => e.RequestId);
-                entity.Property(e => e.Data);
-                entity.Property(e => e.Code);
-                entity.Property(e => e.Content);
-                entity.Property(e => e.ResponseDesc);
-                entity.Property(e => e.Operation);
-
+                
+                entity.Property(e => e.u_logstamp)
+                    .HasMaxLength(50)
+                    .HasColumnName("u_logsstamp");
+                    
+                entity.Property(e => e.Code)
+                    .HasColumnName("code")
+                    .HasDefaultValueSql("('')");
+                    
+                entity.Property(e => e.Ip)
+                    .HasColumnName("ip")
+                    .HasDefaultValueSql("('')");
+                    
+                entity.Property(e => e.Content)
+                    .HasColumnName("content")
+                    .HasDefaultValueSql("('')");
+                    
+                entity.Property(e => e.Responsetext)
+                    .HasColumnName("responsetext")
+                    .HasDefaultValueSql("('')");
+                    
+                entity.Property(e => e.Data)
+                    .HasColumnType("datetime")
+                    .HasColumnName("data");
+                    
+                entity.Property(e => e.Operation)
+                    .HasColumnName("operation")
+                    .HasDefaultValueSql("('')");
+                    
+                entity.Property(e => e.RequestId)
+                    .HasColumnName("requestId")
+                    .HasDefaultValueSql("('')");
+                    
+                entity.Property(e => e.ResponseDesc)
+                    .HasColumnName("responseDesc")
+                    .HasDefaultValueSql("('')");
+                    
+                entity.Property(e => e.LogLevel)
+                    .HasMaxLength(20)
+                    .HasColumnName("LogLevel");
+                    
+                entity.Property(e => e.SourceBank)
+                    .HasMaxLength(100)
+                    .HasColumnName("SourceBank");
+                    
+                entity.Property(e => e.HttpMethod)
+                    .HasMaxLength(10)
+                    .HasColumnName("HttpMethod");
+                    
+                entity.Property(e => e.HttpStatusCode)
+                    .HasColumnName("HttpStatusCode");
+                    
+                entity.Property(e => e.DurationMs)
+                    .HasColumnName("DurationMs");
+                    
+                entity.Property(e => e.EndpointUrl)
+                    .HasMaxLength(500)
+                    .HasColumnName("EndpointUrl");
+                    
+                entity.Property(e => e.ProcessingStep)
+                    .HasMaxLength(100)
+                    .HasColumnName("ProcessingStep");
             });
             modelBuilder.Entity<UProvider>(entity =>
             {
@@ -712,6 +765,19 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasDefaultValueSql("('')");
+                    
+                entity.Property(e => e.Canal)
+                    .HasColumnName("Canal");
+                    
+                entity.Property(e => e.CanalNome)
+                    .HasMaxLength(50)
+                    .IsUnicode(false)
+                    .HasColumnName("CanalNome");
+                    
+                entity.Property(e => e.Tabela)
+                    .HasMaxLength(10)
+                    .IsUnicode(false)
+                    .HasColumnName("Tabela");
             });
 
 

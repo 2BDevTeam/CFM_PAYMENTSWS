@@ -7,7 +7,7 @@ namespace CFM_PAYMENTSWS
  
         public string username { get; set; }
         public string password { get; set; }
-        public string apiKey { get; set; }
+        public string token { get; set; }
         public override string ToString() => JsonConvert.SerializeObject(this);
     }
 }

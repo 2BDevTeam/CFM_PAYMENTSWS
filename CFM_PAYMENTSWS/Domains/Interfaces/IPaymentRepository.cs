@@ -24,5 +24,6 @@ namespace CFM_PAYMENTSWS.Domains.Interface
         void updateTransactionStatus(U2bRecPayments transacaoActualizar);
         U2bRecPayments GetU2BRecPayments(string id);
 
+        public List<U2bPaymentsQueue> GetPaymentsQueuePendentesDiaAnterior(DateTime today);
     }
 }

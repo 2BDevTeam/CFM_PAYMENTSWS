@@ -19,8 +19,12 @@ namespace CFM_PAYMENTSWS.Mappers
             var config = new MapperConfiguration(cfg =>
                 cfg.CreateMap<BCIResponseDTO, ResponseDTO>()
                 .ForPath(dest => dest.response, act => act.MapFrom(src => getStatusCode(src)))
-                .ForPath(dest => dest.Data, act => act.MapFrom(src => bciResponseDTO.ToString())
-                ));
+                .ForPath(dest => dest.Content, act => act.MapFrom(src => bciResponseDTO.Description))
+                .ForPath(dest => dest.Data, act => act.MapFrom(src => bciResponseDTO.ToString()))
+                .ForPath(dest => dest.HttpStatusCode, act => act.MapFrom(src => bciResponseDTO.HttpStatusCode))
+                .ForPath(dest => dest.DurationMs, act => act.MapFrom(src => bciResponseDTO.DurationMs))
+                .ForPath(dest => dest.EndpointUrl, act => act.MapFrom(src => bciResponseDTO.EndpointUrl))
+                );
             var mapper = new Mapper(config);
             var responseDTO = mapper.Map<ResponseDTO>(bciResponseDTO);
 
@@ -126,6 +130,23 @@ namespace CFM_PAYMENTSWS.Mappers
 
         }
 
+        /*
+        private string RetryWithModifiedBatchId(PaymentCamelCase payment, int statusCode)
+        {
+            if (statusCode == 500 && !string.IsNullOrEmpty(payment.BatchId) && payment.BatchId.Length > 2)
+            {
+                var originalBatchId = payment.BatchId;
+                payment.BatchId = payment.BatchId.Substring(0, payment.BatchId.Length - 2) + "_1";
+                
+                Debug.Print($"[DEPRECATED] Retrying with modified BatchId: {originalBatchId} -> {payment.BatchId}");
+                
+                // var bciApi = new BCIAPI();
+                // var retryResponse = bciApi.loadPayments(payment);
+                // return retryResponse.StatusCode;
+            }
+            return statusCode.ToString();
+        }
+        */
 
 
     }

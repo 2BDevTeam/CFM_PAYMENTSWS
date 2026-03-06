@@ -11,6 +11,9 @@ namespace CFM_PAYMENTSWS.Providers.BCI.DTOs
         public string StatusCode { get; set; }
         public string StatusDescription { get; set; }
         public List<PaymentRecordsDTO> PaymentRecordsStatus { get; set; }
+        public int? HttpStatusCode { get; set; }
+        public int? DurationMs { get; set; }
+        public string EndpointUrl { get; set; }
         public override string ToString() => JsonConvert.SerializeObject(this);
         public BCIResponseDTO() { }
 

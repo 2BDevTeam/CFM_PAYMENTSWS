@@ -20,6 +20,8 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
 
         public async Task<FcbResponseDTO> LoadPaymentsAsync(FcbPaymentDTO payment)
         {
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 var authResponse = await AuthenticateAsync();
@@ -29,10 +31,11 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
                 }
 
                 var httpWebRequest = GetRequest("loadPayments");
+                var endpointUrl = httpWebRequest.RequestUri.ToString();
                 httpWebRequest.Accept = httpWebRequest.ContentType;
                 httpWebRequest.Headers.Add("Authorization", $"Bearer {authResponse.AccessToken}");
                 httpWebRequest.Headers.Add("Request-UUID", Guid.NewGuid().ToString());
-                httpWebRequest.Headers.Add("Application-ID", "CFM");
+                httpWebRequest.Headers.Add("Application-ID", "FCM");
 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
@@ -45,18 +48,34 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
                 }
 
                 using var httpResponse = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
+                var httpStatusCode = (int)httpResponse.StatusCode;
                 using var streamReader = new StreamReader(httpResponse.GetResponseStream());
                 var result = await streamReader.ReadToEndAsync();
 
                 var response = JsonConvert.DeserializeObject<FcbResponseDTO>(result);
-                return response ?? new FcbResponseDTO
+                if (response != null)
+                {
+                    stopwatch.Stop();
+                    response.HttpStatusCode = httpStatusCode;
+                    response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                    response.EndpointUrl = endpointUrl;
+                    return response;
+                }
+
+                stopwatch.Stop();
+                var emptyResponse = new FcbResponseDTO
                 {
                     StatusCode = "0007",
-                    StatusDescription = "Empty response from FCB service"
+                    StatusDescription = "Empty response from FCB service",
+                    HttpStatusCode = httpStatusCode,
+                    DurationMs = (int)stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = endpointUrl
                 };
+                return emptyResponse;
             }
             catch (WebException ex)
             {
+                stopwatch.Stop();
                 var statusCode = HttpStatusCode.InternalServerError;
                 if (ex.Response is HttpWebResponse errorResponse)
                 {
@@ -68,31 +87,45 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
                         var errorDto = JsonConvert.DeserializeObject<FcbResponseDTO>(errorPayload);
                         if (errorDto != null)
                         {
+                            errorDto.HttpStatusCode = (int)statusCode;
+                            errorDto.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                            errorDto.EndpointUrl = GetRequest("loadPayments").RequestUri.ToString();
                             return errorDto;
                         }
                     }
                     catch
                     {
-                        return new FcbResponseDTO
+                        var errorResponse1 = new FcbResponseDTO
                         {
                             StatusCode = ((int)statusCode).ToString(),
-                            StatusDescription = string.IsNullOrWhiteSpace(errorPayload) ? ex.Message : errorPayload
+                            StatusDescription = string.IsNullOrWhiteSpace(errorPayload) ? ex.Message : errorPayload,
+                            HttpStatusCode = (int)statusCode,
+                            DurationMs = (int)stopwatch.ElapsedMilliseconds,
+                            EndpointUrl = GetRequest("loadPayments").RequestUri.ToString()
                         };
+                        return errorResponse1;
                     }
                 }
 
                 return new FcbResponseDTO
                 {
                     StatusCode = ((int)statusCode).ToString(),
-                    StatusDescription = ex.Message
+                    StatusDescription = ex.Message,
+                    HttpStatusCode = (int)statusCode,
+                    DurationMs = (int)stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = GetRequest("loadPayments").RequestUri.ToString()
                 };
             }
             catch (Exception ex)
             {
+                stopwatch.Stop();
                 return new FcbResponseDTO
                 {
                     StatusCode = "0007",
-                    StatusDescription = ex.Message
+                    StatusDescription = ex.Message,
+                    HttpStatusCode = 500,
+                    DurationMs = (int)stopwatch.ElapsedMilliseconds,
+                    EndpointUrl = GetRequest("loadPayments").RequestUri.ToString()
                 };
             }
         }

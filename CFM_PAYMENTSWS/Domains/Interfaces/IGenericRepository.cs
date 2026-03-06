@@ -1,5 +1,6 @@
 ﻿using CFM_PAYMENTSWS.DTOs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CFM_PAYMENTSWS.Domains.Interface
 {
@@ -20,6 +21,7 @@ namespace CFM_PAYMENTSWS.Domains.Interface
         void SaveChanges();
         public void SaveChangesAsync();
         public Task<ResponseDTO> SaveChangesRespDTO();
+        public IDbContextTransaction BeginTransaction();
 
     }
 }

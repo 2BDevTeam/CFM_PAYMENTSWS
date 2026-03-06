@@ -122,18 +122,20 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
 
         public async Task<BimResponseDTO> loadPayments(Paymentv1_5 payment)
         {
+            var stopwatch = Stopwatch.StartNew();
 
             try
             {
                 string authResult = await Authenticate();
 
                 var httpWebRequest = httpHelper.GetHttpWebRequestByEntityAndRoute("Bim", "loadpayments");
+                var endpointUrl = httpWebRequest.RequestUri.ToString();
 
                 string result = "";
 
                 Debug.Print("authResult " + authResult);
                 httpWebRequest.Headers.Add("Authorization", $"Bearer {authResult}");
-                httpWebRequest.Headers.Add("Scope", "PymtApiCFM");
+                //httpWebRequest.Headers.Add("Scope", "PymtApiCFM");
                 //httpWebRequest.Headers.Add("Scope", "CFM");
 
 
@@ -160,6 +162,7 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
                 }
 
                 var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                var httpStatusCode = (int)httpResponse.StatusCode;
 
                 StreamReader streamReader = new System.IO.StreamReader(httpResponse.GetResponseStream());
 
@@ -173,12 +176,17 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
                     throw new Exception();
                 }
 
+                stopwatch.Stop();
+                response.HttpStatusCode = httpStatusCode;
+                response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                response.EndpointUrl = endpointUrl;
 
                 return response;
             }
 
             catch (WebException ex)
             {
+                stopwatch.Stop();
                 int statusCode = 500;
                 Debug.Print($"WEB EXCPPP {ex.ToString()} ");
                 Debug.Print("CODIGO DE RESPOSTA" + ex.Status.ToString());
@@ -189,7 +197,11 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
                     Debug.Print("A solicitação web retornou o código de erro: " + statusCode);
                 }
 
-                return new BimResponseDTO(payment.BatchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
+                var response = new BimResponseDTO(payment.BatchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
+                response.HttpStatusCode = statusCode;
+                response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                response.EndpointUrl = httpHelper.GetHttpWebRequestByEntityAndRoute("Bim", "loadpayments").RequestUri.ToString();
+                return response;
 
             }
             catch (Exception ex)

@@ -164,7 +164,7 @@ namespace CFM_PAYMENTSWS.Helper
 
         public string CalcularReferenciaComCheckDigit(string stringInput, string refPagCheck)
         {
-            // Definir os pesos como no SQL original
+            // Definir os pesos como no FoxPro
             Dictionary<int, int> pesos = new Dictionary<int, int>
             {
                 {1, 1}, {2, 10}, {3, 3}, {4, 30}, {5, 9}, {6, 90}, {7, 27}, {8, 76}, {9, 81}, {10, 34},

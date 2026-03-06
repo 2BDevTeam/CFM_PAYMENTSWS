@@ -20,6 +20,9 @@ namespace CFM_PAYMENTSWS.DTOs
         public HeaderDTO Header { get; set; }
         public object? Data { get; set; }
         public object? Content { get; set; }
+        public int? HttpStatusCode { get; set; }
+        public int? DurationMs { get; set; }
+        public string EndpointUrl { get; set; }
         public override string ToString() => JsonConvert.SerializeObject(this);
     }
 }

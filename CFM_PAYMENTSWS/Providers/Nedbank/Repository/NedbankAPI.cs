@@ -18,12 +18,14 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
         private readonly HttpHelper httpHelper = new HttpHelper();
         public NedbankResponseDTO loadPayments(Payment payment)
         {
+            var stopwatch = Stopwatch.StartNew();
             
             try
             {
                 string result = "";
              
                 HttpWebRequest httpWebRequest = httpHelper.getHttpWebRequestByProvider(105, "loadPayments","");
+                var endpointUrl = httpWebRequest.RequestUri.ToString();
                 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
@@ -48,6 +50,7 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
                 }
                 
                 var httpResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                var httpStatusCode = (int)httpResponse.StatusCode;
                
                 StreamReader streamReader = new System.IO.StreamReader(httpResponse.GetResponseStream());
                 
@@ -62,7 +65,10 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
                     throw new Exception();
                 }
 
-
+                stopwatch.Stop();
+                response.HttpStatusCode = httpStatusCode;
+                response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                response.EndpointUrl = endpointUrl;
 
                 //response.content = payment;
 
@@ -71,6 +77,7 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
 
             catch (WebException ex)
             {
+                stopwatch.Stop();
                 int statusCode=500;
                 if (ex.Response is HttpWebResponse httpResponse)
                 {
@@ -83,12 +90,21 @@ namespace CFM_PAYMENTSWS.Providers.Nedbank.Repository
                 //var rpp = (HttpWebResponse)ex.Response;
                 Debug.Print($"WEB EXCPPP {ex.ToString()} ");
                 Debug.Print("CODIGO DE RESPOSTA" + ex.Status.ToString());
-                return new NedbankResponseDTO(payment.BatchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
+                var response = new NedbankResponseDTO(payment.BatchId, ex.ToString(), statusCode.ToString(), ex.Response?.ToString() ?? "No response");
+                response.HttpStatusCode = statusCode;
+                response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                response.EndpointUrl = httpHelper.getHttpWebRequestByProvider(105, "loadPayments", "").RequestUri.ToString();
+                return response;
 
             }
             catch (Exception ex)
             {
-                return new NedbankResponseDTO(payment.BatchId, ex.ToString(),"0007","Internal Error");
+                stopwatch.Stop();
+                var response = new NedbankResponseDTO(payment.BatchId, ex.ToString(),"0007","Internal Error");
+                response.HttpStatusCode = 500;
+                response.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+                response.EndpointUrl = httpHelper.getHttpWebRequestByProvider(105, "loadPayments", "").RequestUri.ToString();
+                return response;
                 // return getGeneralExceptionResponse(ex, consumidores, "ForUTechRepository.inserirConsumidores");
             }
         }

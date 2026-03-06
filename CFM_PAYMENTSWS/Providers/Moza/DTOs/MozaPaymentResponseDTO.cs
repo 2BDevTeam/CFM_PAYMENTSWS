@@ -46,6 +46,10 @@ namespace CFM_PAYMENTSWS.Providers.Moza.DTOs
 
         public string? StatusDescription => Data?.StatusDescription;
 
+        public int? HttpStatusCode { get; set; }
+        public int? DurationMs { get; set; }
+        public string EndpointUrl { get; set; }
+
         public override string ToString() => JsonConvert.SerializeObject(this);
     }
 }

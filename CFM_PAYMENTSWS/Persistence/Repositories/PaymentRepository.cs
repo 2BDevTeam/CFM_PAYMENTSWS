@@ -290,6 +290,14 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
                           .ToList();
         }
 
+        public List<U2bPaymentsQueue> GetPaymentsQueuePendentesDiaAnterior(DateTime today)
+        {
+            return _context.Set<U2bPaymentsQueue>()
+                          .Where(q => (q.Estado == "Por enviar" || q.Estado == "Por processar")
+                                   && q.Ousrdata.Date < today)
+                          .ToList();
+        }
+
         public async Task<bool> PaymentExistsAsync(U2bRecPayments payment)
         {
             return await _context.Set<U2bRecPayments>()
@@ -309,10 +317,10 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
 
         public void updateTransactionStatus(U2bRecPayments transacaoActualizar)
         {
-            transacaoActualizar.StatusCode = WebTransactionCodes.SUCCESSPAYMENT.cod;
-            transacaoActualizar.StatusDescription = WebTransactionCodes.SUCCESSPAYMENT.codDesc;
-            //transacaoActualizar.message = WebTransactionCodes.SUCCESSPAYMENT.codDesc;
-
+            // Não sobrescrever o status - usar o que já foi definido no objeto
+            // transacaoActualizar.StatusCode = WebTransactionCodes.SUCCESSPAYMENT.cod;
+            // transacaoActualizar.StatusDescription = WebTransactionCodes.SUCCESSPAYMENT.codDesc;
+            
             _context.Set<U2bRecPayments>().Update(transacaoActualizar);
             _context.SaveChanges();
         }

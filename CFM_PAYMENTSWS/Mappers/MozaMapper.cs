@@ -12,7 +12,11 @@ namespace CFM_PAYMENTSWS.Mappers
             var config = new MapperConfiguration(cfg =>
                 cfg.CreateMap<MozaPaymentResponseDTO, ResponseDTO>()
                     .ForPath(dest => dest.response, act => act.MapFrom(src => GetStatusCode(src)))
+                    .ForPath(dest => dest.Content, act => act.MapFrom(src => (src.Data != null && src.Data.Description != null) ? src.Data.Description : src.Message))
                     .ForPath(dest => dest.Data, act => act.MapFrom(src => src.ToString()))
+                    .ForPath(dest => dest.HttpStatusCode, act => act.MapFrom(src => mozaResponse.HttpStatusCode))
+                    .ForPath(dest => dest.DurationMs, act => act.MapFrom(src => mozaResponse.DurationMs))
+                    .ForPath(dest => dest.EndpointUrl, act => act.MapFrom(src => mozaResponse.EndpointUrl))
             );
 
             var mapper = new Mapper(config);
