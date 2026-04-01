@@ -83,9 +83,6 @@ namespace CFM_PAYMENTSWS.Helper
             httpWebRequest.ContentType = endpoint.contentType;
             httpWebRequest.Method = endpoint.method;
 
-            if (entity == "Bim")
-                httpWebRequest.Headers.Add("Scope", endpoint.credentials.token);
-
             return httpWebRequest;
         }
 

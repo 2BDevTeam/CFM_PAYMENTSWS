@@ -127,6 +127,9 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
             try
             {
                 string authResult = await Authenticate();
+                var apiData = apiHelper.getApiEntity("Bim", "loadpayments");
+                var endpoint = apiData.endpoints.Where(endpoint => endpoint.operationCode == "loadpayments").FirstOrDefault();
+                var scope = endpoint?.credentials?.token;
 
                 var httpWebRequest = httpHelper.GetHttpWebRequestByEntityAndRoute("Bim", "loadpayments");
                 var endpointUrl = httpWebRequest.RequestUri.ToString();
@@ -135,8 +138,8 @@ namespace CFM_PAYMENTSWS.Providers.Bim.Repository
 
                 Debug.Print("authResult " + authResult);
                 httpWebRequest.Headers.Add("Authorization", $"Bearer {authResult}");
-                //httpWebRequest.Headers.Add("Scope", "PymtApiCFM");
-                //httpWebRequest.Headers.Add("Scope", "CFM");
+                if (!string.IsNullOrWhiteSpace(scope))
+                    httpWebRequest.Headers.Add("Scope", scope);
 
 
                 httpWebRequest.ServerCertificateValidationCallback +=

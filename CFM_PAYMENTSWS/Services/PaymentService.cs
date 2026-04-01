@@ -1102,9 +1102,26 @@ namespace CFM_PAYMENTSWS.Services
             }
             catch (Exception ex)
             {
-                // Lógica de tratamento de exceção, se necessário.
+                var responseErro = new ResponseDTO(new ResponseCodesDTO("0404", "Erro no processamento."), null, null);
+                var erroCompleto = ex.ToString();
+
+                logHelper.generateLogJB(
+                    responseErro,
+                    paymentHeader?.BatchId ?? ("actualizarPagamentos-" + Guid.NewGuid()),
+                    "PaymentService.actualizarPagamentos",
+                    JsonConvert.SerializeObject(paymentHeader),
+                    "127.0.0.1",
+                    "Error",
+                    null,
+                    "POST",
+                    null,
+                    null,
+                    null,
+                    "UpdatePaymentStatusError",
+                    erroCompleto);
+
                 Debug.Print("Erro: " + ex.Message);
-                return new ResponseDTO(new ResponseCodesDTO("0404", "Erro no processamento."), null, null);
+                return responseErro;
             }
 
             return new ResponseDTO(new ResponseCodesDTO("0000", "Pagamento processado com sucesso."), null, null);
@@ -1193,7 +1210,7 @@ namespace CFM_PAYMENTSWS.Services
                     bimResponse,
                     pagamento.payment.BatchId,
                     "PaymentService.processarPagamento - Bim",
-                    pagamento.payment,
+                    paymentv1_5.ToString(),
                     "127.0.0.1",
                     "",
                     "BIM",
@@ -1265,7 +1282,7 @@ namespace CFM_PAYMENTSWS.Services
                         fcbResponse,
                         pagamento.payment.BatchId,
                         "PaymentService.processarPagamento - FCB",
-                        fcbPayment,
+                        fcbPayment.ToString(),
                         "127.0.0.1",
                         "",
                         "FCB",
@@ -1283,7 +1300,7 @@ namespace CFM_PAYMENTSWS.Services
                         response,
                         pagamento.payment.BatchId,
                         "PaymentService.processarPagamento - FCB",
-                        fcbPayment,
+                        fcbPayment.ToString(),
                         "127.0.0.1",
                         "Error",
                         "FCB",
@@ -1378,7 +1395,7 @@ namespace CFM_PAYMENTSWS.Services
                     bciResponse,
                     pagamento.payment.BatchId,
                     "PaymentService.processarPagamento - BCI",
-                    paymentCamel,
+                    paymentCamel.ToString(),
                     "127.0.0.1",
                     "",
                     "BCI",
@@ -1462,7 +1479,7 @@ namespace CFM_PAYMENTSWS.Services
                     mozaResponse,
                     pagamento.payment.BatchId,
                     "PaymentService.processarPagamento - MOZA",
-                    paymentCamel,
+                    paymentCamel.ToString(),
                     "127.0.0.1",
                     "",
                     "MOZA",
@@ -1480,6 +1497,13 @@ namespace CFM_PAYMENTSWS.Services
 
             foreach (var pagamento in pagamentos)
             {
+                var nedbankPayload = JsonConvert.SerializeObject(
+                    pagamento.payment,
+                    new JsonSerializerSettings
+                    {
+                        DateFormatString = "yyyy-MM-ddTHH:mm:ss",
+                        DateTimeZoneHandling = DateTimeZoneHandling.Unspecified
+                    });
 
                 NedbankAPI nedbankRepository = new NedbankAPI();
                 NedbankResponseDTO nedbankResponseDTO = nedbankRepository.loadPayments(pagamento.payment);
@@ -1549,7 +1573,7 @@ namespace CFM_PAYMENTSWS.Services
                     nedbankResponse,
                     pagamento.payment.BatchId,
                     "PaymentService.processarPagamento - nedbank",
-                    pagamento.payment,
+                    nedbankPayload,
                     "127.0.0.1",
                     "",
                     "NEDBANK",
@@ -1723,10 +1747,6 @@ namespace CFM_PAYMENTSWS.Services
             var encryptedData = _paymentRespository.GetPaymentsQueueBatchId(paymentHeader.BatchId);
 
 
-            var paymentQueue = encryptedData
-                                     .Where(u2BPaymentsQueue => encryptionHelper.DecryptText(u2BPaymentsQueue.TransactionId, u2BPaymentsQueue.Keystamp) == pagamento.TransactionId.Trim())
-                                     .FirstOrDefault();
-
             var wspayment = _phcRepository.GetWspaymentsByDestino(paymentHeader.BatchId, payment.Oristamp);
 
             Debug.Print("Prontos para actualziar");
@@ -1748,12 +1768,6 @@ namespace CFM_PAYMENTSWS.Services
                 wspayment.Bankreference = pagamento.BankReference;
             }
 
-            // Eliminar sempre da Queue após ter resultado do banco (sucesso ou erro)
-            if (paymentQueue != null)
-            {
-                _genericPaymentRepository.Delete(paymentQueue);
-                Debug.Print($"Pagamento com TransactionId {pagamento.TransactionId} eliminado da Queue após processamento. Estado: {estado}");
-            }
 
             DateTime processingDate = ParseProcessingDate(paymentHeader.ProcessingDate);
             Debug.Print($"processingDateprocessingDate: {paymentHeader.ProcessingDate}");
@@ -1762,7 +1776,7 @@ namespace CFM_PAYMENTSWS.Services
             switch (payment.Tabela)
             {
                 case "PO":
-                    var po = _phcRepository.GetPo(paymentQueue.Oristamp);
+                    var po = _phcRepository.GetPo(wspayment.Oristamp);
 
                     po.Process = true;
                     po.URefbanco = pagamento.BankReference;
@@ -1773,7 +1787,7 @@ namespace CFM_PAYMENTSWS.Services
                     break;
 
                 case "PD":
-                    var pd = _phcRepository.GetPd(paymentQueue.Oristamp);
+                    var pd = _phcRepository.GetPd(wspayment.Oristamp);
 
                     //pd.Process = true;
                     pd.URefbanco = pagamento.BankReference;
@@ -1784,7 +1798,7 @@ namespace CFM_PAYMENTSWS.Services
                     break;
 
                 case "OW":
-                    var ol = _phcRepository.GetOw(paymentQueue.Oristamp);
+                    var ol = _phcRepository.GetOw(wspayment.Oristamp);
 
                     //ol.Process = true;
                     ol.Dvalor = processingDate;
@@ -1792,7 +1806,7 @@ namespace CFM_PAYMENTSWS.Services
 
                     break;
                 case "TB":
-                    var tb = _phcRepository.GetTb(paymentQueue.Oristamp);
+                    var tb = _phcRepository.GetTb(wspayment.Oristamp);
 
                     //tb.Dvalor = paymentHeader.ProcessingDate;
                     //tb.Cheque = pagamento.BankReference;
@@ -1803,7 +1817,7 @@ namespace CFM_PAYMENTSWS.Services
 
             }
 
-            var trfb = _phcRepository.GetUTrfb(paymentQueue.BatchId);
+            var trfb = _phcRepository.GetUTrfb(wspayment.Batchid);
             if (trfb != null)
             {
                 trfb.Rdata = processingDate;

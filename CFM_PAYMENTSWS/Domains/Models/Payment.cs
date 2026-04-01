@@ -49,6 +49,7 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public string Description { get; set; }
         public string ProcessingDate { get; set; }
         public string DebitAccount { get; set; }
+        [JsonProperty("initgPty_Code")]
         public string initgPty_Code { get; set; } = null!;
         public int BatchBooking { get; set; }
         public List<PaymentRecords> PaymentRecords { get; set; }

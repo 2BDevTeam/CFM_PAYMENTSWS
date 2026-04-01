@@ -324,6 +324,9 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                 entity.Property(e => e.ProcessingStep)
                     .HasMaxLength(100)
                     .HasColumnName("ProcessingStep");
+
+                entity.Property(e => e.ErroCompleto)
+                    .HasColumnName("erroCompleto");
             });
             modelBuilder.Entity<UProvider>(entity =>
             {

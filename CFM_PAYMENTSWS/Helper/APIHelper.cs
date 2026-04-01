@@ -134,8 +134,8 @@ namespace CFM_PAYMENTSWS.Helper
         public API getApiEntity(string entity, string operationCode)
         {
             var configuration = new ConfigurationBuilder()
-          .SetBasePath(Directory.GetCurrentDirectory())
-          .AddJsonFile($"appsettings.json");
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json");
 
             var config = configuration.Build();
             API[] configuracoes = config.GetSection("APIS").Get<API[]>();

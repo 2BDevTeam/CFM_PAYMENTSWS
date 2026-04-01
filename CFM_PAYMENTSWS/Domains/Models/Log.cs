@@ -22,5 +22,6 @@ namespace CFM_PAYMENTSWS.Domains.Models
         public int? DurationMs { get; set; }
         public string? EndpointUrl { get; set; }
         public string? ProcessingStep { get; set; }
+        public string? ErroCompleto { get; set; }
     }
 }

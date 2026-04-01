@@ -57,7 +57,8 @@ namespace CFM_PAYMENTSWS.Helper
             int? httpStatusCode = null,
             int? durationMs = null,
             string endpointUrl = null,
-            string processingStep = null)
+            string processingStep = null,
+            string erroCompleto = null)
         {
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
             var configuration = new ConfigurationBuilder()
@@ -89,7 +90,8 @@ namespace CFM_PAYMENTSWS.Helper
                     HttpStatusCode = httpStatusCode,
                     DurationMs = durationMs,
                     EndpointUrl = endpointUrl,
-                    ProcessingStep = processingStep
+                    ProcessingStep = processingStep,
+                    ErroCompleto = erroCompleto
                 };
 
                 context.Log.Add(log);

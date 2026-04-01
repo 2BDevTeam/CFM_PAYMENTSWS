@@ -87,7 +87,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
             Debug.Print("Get Pagamento queue");
             try
             {
-                //await UpdateCCusto();
+                await UpdateCCusto();
 
 
                 var baseQuery = _context.Set<U2bPaymentsQueue>()
@@ -253,7 +253,7 @@ namespace CFM_PAYMENTSWS.Persistence.Repositories
         public bool verificaBatchId(string batchId)
         {
             // Retorna true se o batchId existe na tabela, caso contrário, retorna false
-            return _context.Set<U2bPaymentsQueue>()
+            return _context.Set<U2bPayments>()
                         .Any(p => p.BatchId == batchId);
         }
 

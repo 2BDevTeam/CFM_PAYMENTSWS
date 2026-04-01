@@ -1124,15 +1124,9 @@ namespace CFM_PAYMENTSWS.Persistence.Contexts
                     .HasColumnType("numeric(4, 0)")
                     .HasColumnName("periododias");
 
-                entity.Property(e => e.Precisao)
-                    .HasMaxLength(25)
-                    .IsUnicode(false)
-                    .HasColumnName("precisao")
-                    .HasDefaultValueSql("('')");
+                entity.Ignore(e => e.Precisao);
 
-                entity.Property(e => e.Precisaoid)
-                    .HasColumnType("numeric(1, 0)")
-                    .HasColumnName("precisaoid");
+                entity.Ignore(e => e.Precisaoid);
 
                 entity.Property(e => e.Rsaldo)
                     .HasColumnType("numeric(18, 5)")

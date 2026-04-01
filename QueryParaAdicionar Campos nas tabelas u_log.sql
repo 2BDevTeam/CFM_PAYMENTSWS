@@ -1,5 +1,6 @@
 
 -- Adicionar colunas à tabela u_logs
+ALTER TABLE u_logs ADD responsetext VARCHAR(MAX) NULL; -- Texto bruto da resposta do provider
 ALTER TABLE u_logs ADD LogLevel VARCHAR(20) NULL; -- Info, Warning, Error, Debug, Critical
 ALTER TABLE u_logs ADD SourceBank VARCHAR(100) NULL; -- Banco (BCI, BIM, FCB, etc)
 ALTER TABLE u_logs ADD HttpMethod VARCHAR(10) NULL;
