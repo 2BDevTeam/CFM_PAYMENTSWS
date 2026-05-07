@@ -16,6 +16,16 @@ namespace CFM_PAYMENTSWS.Providers.FCB.DTOs
         [JsonProperty("scope")]
         public string Scope { get; set; } = string.Empty;
 
+        [JsonProperty("error")]
+        public string Error { get; set; } = string.Empty;
+
+        [JsonProperty("error_description")]
+        public string ErrorDescription { get; set; } = string.Empty;
+
+        public int? HttpStatusCode { get; set; }
+        public string RawPayload { get; set; } = string.Empty;
+        public int AttemptCount { get; set; } = 0;
+
         public override string ToString() => JsonConvert.SerializeObject(this);
     }
 }

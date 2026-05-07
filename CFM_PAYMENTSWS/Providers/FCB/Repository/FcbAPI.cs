@@ -27,7 +27,11 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
                 var authResponse = await AuthenticateAsync();
                 if (authResponse == null || string.IsNullOrWhiteSpace(authResponse.AccessToken))
                 {
-                    throw new Exception("UNAUTHORIZED");
+                    var authError = authResponse == null
+                        ? "Auth response null"
+                        : $"Attempt {authResponse.AttemptCount}/5; HttpStatus={authResponse.HttpStatusCode}; error={authResponse.Error}; error_description={authResponse.ErrorDescription}; payload={authResponse.RawPayload}";
+
+                    throw new Exception($"UNAUTHORIZED - TOKEN_ERROR: {authError}");
                 }
 
                 var httpWebRequest = GetRequest("loadPayments");
@@ -35,7 +39,7 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
                 httpWebRequest.Accept = httpWebRequest.ContentType;
                 httpWebRequest.Headers.Add("Authorization", $"Bearer {authResponse.AccessToken}");
                 httpWebRequest.Headers.Add("Request-UUID", Guid.NewGuid().ToString());
-                httpWebRequest.Headers.Add("Application-ID", "FCM");
+                httpWebRequest.Headers.Add("Application-ID", "CFM");
 
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
@@ -132,35 +136,76 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
 
         private async Task<FcbAuthResponseDTO?> AuthenticateAsync()
         {
-            try
+            var apiData = apiHelper.getApiEntity(Entity, "login");
+            var endpoint = apiData?.endpoints?.FirstOrDefault(e => e.operationCode == "login");
+            if (endpoint == null)
             {
-                var apiData = apiHelper.getApiEntity(Entity, "login");
-                var endpoint = apiData?.endpoints?.FirstOrDefault(e => e.operationCode == "login");
-                if (endpoint == null)
+                throw new Exception("FCB login endpoint not configured");
+            }
+
+            const int maxAttempts = 5;
+            FcbAuthResponseDTO? lastResponse = null;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                lastResponse = await RequestTokenOnceAsync(endpoint.url.Trim(), endpoint.method, endpoint.contentType, endpoint.credentials.username, endpoint.credentials.password);
+                if (lastResponse != null)
+                    lastResponse.AttemptCount = attempt;
+
+                if (lastResponse != null && !string.IsNullOrWhiteSpace(lastResponse.AccessToken))
                 {
-                    throw new Exception("FCB login endpoint not configured");
+                    return lastResponse;
                 }
 
+                var shouldRetry = attempt < maxAttempts && IsTransientTokenFailure(lastResponse);
+                if (!shouldRetry)
+                {
+                    return lastResponse;
+                }
+
+                await Task.Delay(500 * attempt);
+            }
+
+            return lastResponse;
+        }
+
+        private async Task<FcbAuthResponseDTO?> RequestTokenOnceAsync(string url, string method, string contentType, string username, string password)
+        {
+            try
+            {
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                ServicePointManager.Expect100Continue = false;
                 ServicePointManager.ServerCertificateValidationCallback = (_, _, _, _) => true;
 
-                var httpWebRequest = (HttpWebRequest)WebRequest.Create(endpoint.url.Trim());
-                httpWebRequest.Method = endpoint.method;
-                httpWebRequest.ContentType = endpoint.contentType;
+                var httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
+                httpWebRequest.Method = method;
+                httpWebRequest.ContentType = contentType;
+                httpWebRequest.Accept = "application/json";
+                httpWebRequest.Timeout = 30000;
+                httpWebRequest.ReadWriteTimeout = 30000;
+                httpWebRequest.KeepAlive = true;
 
-                var credentials = $"{endpoint.credentials.username}:{endpoint.credentials.password}";
+                var credentials = $"{username}:{password}";
                 var base64Credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
                 httpWebRequest.Headers.Add("Authorization", $"Basic {base64Credentials}");
 
-                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+                var body = "grant_type=client_credentials";
+                var data = Encoding.UTF8.GetBytes(body);
+                httpWebRequest.ContentLength = data.Length;
+
+                using (var requestStream = await httpWebRequest.GetRequestStreamAsync())
                 {
-                    await streamWriter.WriteAsync("grant_type=client_credentials");
-                    await streamWriter.FlushAsync();
+                    await requestStream.WriteAsync(data, 0, data.Length);
+                    await requestStream.FlushAsync();
                 }
 
                 using var httpResponse = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
                 using var streamReader = new StreamReader(httpResponse.GetResponseStream());
                 var result = await streamReader.ReadToEndAsync();
-                return JsonConvert.DeserializeObject<FcbAuthResponseDTO>(result);
+                var success = JsonConvert.DeserializeObject<FcbAuthResponseDTO>(result) ?? new FcbAuthResponseDTO();
+                success.HttpStatusCode = (int)httpResponse.StatusCode;
+                success.RawPayload = result;
+                return success;
             }
             catch (WebException ex)
             {
@@ -168,11 +213,26 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
                 {
                     using var reader = new StreamReader(errorResponse.GetResponseStream());
                     var payload = await reader.ReadToEndAsync();
-                    return JsonConvert.DeserializeObject<FcbAuthResponseDTO>(payload);
+                    var errorDto = JsonConvert.DeserializeObject<FcbAuthResponseDTO>(payload) ?? new FcbAuthResponseDTO();
+                    errorDto.HttpStatusCode = (int)errorResponse.StatusCode;
+                    errorDto.RawPayload = payload;
+                    return errorDto;
                 }
 
                 throw;
             }
+        }
+
+        private static bool IsTransientTokenFailure(FcbAuthResponseDTO? response)
+        {
+            if (response == null)
+                return true;
+
+            var status = response.HttpStatusCode ?? 0;
+            if (status == 499 || status == 408 || status == 429 || status >= 500)
+                return true;
+
+            return false;
         }
 
         private HttpWebRequest GetRequest(string operationCode)
@@ -188,6 +248,8 @@ namespace CFM_PAYMENTSWS.Providers.FCB.Repository
             var httpWebRequest = (HttpWebRequest)WebRequest.Create(endpoint.url.Trim());
             httpWebRequest.Method = endpoint.method;
             httpWebRequest.ContentType = endpoint.contentType;
+            httpWebRequest.Timeout = 30000;
+            httpWebRequest.ReadWriteTimeout = 30000;
             return httpWebRequest;
         }
 

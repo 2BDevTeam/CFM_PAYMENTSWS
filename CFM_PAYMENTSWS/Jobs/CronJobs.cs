@@ -23,11 +23,7 @@ namespace CFM_PAYMENTSWS.Jobs
                Cron.MinuteInterval(5)
               );
 
-            RecurringJob.AddOrUpdate(
-                "expirarPendentesDiaAnterior",
-                () => paymentService.ExpirarPendentesDiaAnterior(),
-                Cron.Daily(0, 10)
-              );
+            RecurringJob.RemoveIfExists("expirarPendentesDiaAnterior");
 
 
             /*

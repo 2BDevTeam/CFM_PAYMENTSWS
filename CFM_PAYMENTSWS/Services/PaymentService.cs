@@ -699,6 +699,9 @@ namespace CFM_PAYMENTSWS.Services
 
         public void ExpirarPendentesDiaAnterior()
         {
+            Debug.Print("ExpirarPendentesDiaAnterior desactivado. Os pagamentos permanecem na fila até envio ou actualização por resposta do banco.");
+            return;
+
             var today = DateTime.Now.Date;
             var pendentes = _paymentRespository.GetPaymentsQueuePendentesDiaAnterior(today);
 
@@ -1064,10 +1067,6 @@ namespace CFM_PAYMENTSWS.Services
 
                             case "1001":
                                 actualizarEstadoDoPagamentoByTransactionId("Pendente", "Pagamento pendente", paymentHeader, pagamento);
-                                break;
-
-                            case "0019":
-                                actualizarEstadoDoPagamentoByTransactionId("Processado", "Pagamento processado ou pendente", paymentHeader, pagamento);
                                 break;
 
                             case "0020":

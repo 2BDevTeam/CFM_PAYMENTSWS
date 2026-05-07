@@ -120,13 +120,13 @@ namespace CFM_PAYMENTSWS.Helper
             };
         }
 
-        string FormatEmail(string email)
+        string? FormatEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
-                return "";
+                return null;
 
-            if (email== "NA")
-                return "";
+            if (email == "NA" || email == "N")
+                return null;
 
             return email;
         }
